@@ -1,6 +1,7 @@
 import * as T from './vendor/three.module.js';
 import {newFlight,advance,startStunt,RADIUS} from './flight.js';
 import {newRoute,makeParcel,stepParcel,predictDrop,safeDropAltitude,RELEASE_DELAY,resolveDelivery} from './delivery.js';
+import {drawMinimap} from './minimap.js';
 const $=id=>document.getElementById(id), canvas=$('world');
 let renderer;
 try{renderer=new T.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});}catch(e){$('error').hidden=false;throw e;}
@@ -24,6 +25,7 @@ function surfacePoint(n,x,z,r=RADIUS){const up=new T.Vector3(0,1,0);const q=new 
 function place(n,height=0){const g=new T.Group();g.position.copy(n).multiplyScalar(RADIUS+height);g.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),n);scene.add(g);return g;}
 function island(n,size,label){n.normalize();islands.push({n,size,label});const rings=9,segments=42,verts=[],colors=[];const q=new T.Quaternion().setFromUnitVectors(new T.Vector3(0,1,0),n);const noise=Array.from({length:segments},()=>.87+rand()*.24);
  function pt(r,i){const a=i/segments*Math.PI*2, rr=r*size*noise[i%segments];const h=r>.86?.25:1.0+Math.sin((1-r)*Math.PI)*1.1;return new T.Vector3(Math.cos(a)*rr,RADIUS,Math.sin(a)*rr).normalize().multiplyScalar(RADIUS+h).applyQuaternion(q);}
+ islands[islands.length-1].outline=Array.from({length:segments},(_,i)=>pt(1,i).normalize());
  for(let r=0;r<rings;r++)for(let i=0;i<segments;i++){const a=pt(r/rings,i),b=pt((r+1)/rings,i),c=pt((r+1)/rings,i+1),d=pt(r/rings,i+1);for(const p of [a,c,b,a,d,c])verts.push(p.x,p.y,p.z);const color=new T.Color(r>=7?'#dec58f':r>=6?'#a5af74':['#78a46b','#6d9863','#83a970'][Math.floor(rand()*3)]);for(let j=0;j<6;j++)colors.push(color.r,color.g,color.b);}
  const geo=new T.BufferGeometry();geo.setAttribute('position',new T.Float32BufferAttribute(verts,3));geo.setAttribute('color',new T.Float32BufferAttribute(colors,3));geo.computeVertexNormals();mesh(geo,mat('#ffffff',{vertexColors:true,side:T.DoubleSide}));
  for(let i=0;i<24;i++){const a=rand()*Math.PI*2,r=Math.sqrt(rand())*size*.72;const normal=surfacePoint(n,Math.cos(a)*r,Math.sin(a)*r).normalize();if(normal.y>.98&&Math.abs(normal.x)<.03&&Math.abs(normal.z)<.12)continue;const g=place(normal,1.4),h=2+rand()*3;box(g,.35,h*.6,.35,0,h*.3,0,palette.trunk);const leaf=mesh(new T.ConeGeometry(1.5,h,6),palette.leaf,g);leaf.position.y=h*.7;}
@@ -113,6 +115,7 @@ function updateDelivery(dt){
   $('cargo').textContent=`${route.parcels} PARCELS · CARGO ${Math.round(route.condition)}% · SCORE ${route.score}`;$('laptext').textContent=`${Math.round(route.elapsed)}s · ${route.drops} drops`;
  }
 }
+let mapWorld=false,mapTick=0;const mapCanvas=$('missionmap');$('mapmode').onclick=()=>{mapWorld=!mapWorld;$('mapmode').textContent=mapWorld?'WORLD':'ROUTE';$('mapmode').setAttribute('aria-pressed',String(mapWorld));};
 let hudTick=0;
 function frame(now){requestAnimationFrame(frame);const dt=Math.min((now-last)/1000,.04);last=now;
  if(mode==='flight'||mode==='intro'){
@@ -132,5 +135,6 @@ function frame(now){requestAnimationFrame(frame);const dt=Math.min((now-last)/10
  if(audio&&gain){gain.gain.setTargetAtTime(sound&&mode==='flight'?.025:0,audio.currentTime,.1);osc.frequency.setTargetAtTime(55+state.speed*1.4,audio.currentTime,.12);}
  if(now>noticeUntil)clearNotice();
  hudTick+=dt;if(hudTick>.1){hudTick=0;$('speed').textContent=Math.round(state.speed*3);$('altitude').textContent=Math.round(state.altitude*10);const pct=route.delivered*20;$('progress').textContent=route.delivered+'/5';$('progressbar').style.width=pct+'%';$('throttle').value=Math.round(state.throttle*100);$('throttlevalue').textContent=Math.round(state.throttle*100)+'%';let nearest=null,best=-1;for(const i of islands){const dot=state.normal.dot(i.n);if(dot>best){best=dot;nearest=i;}}$('region').textContent=best>.85?nearest.label:'OPEN OCEAN';}
+ mapTick+=dt;if(mapTick>.08){mapTick=0;const summary=drawMinimap(mapCanvas,state,islands,route.stops,depot.position.clone().normalize(),mapWorld,now/1000);$('mapstatus').textContent=`${summary.remaining} / ${summary.total} stops left`;}
  renderer.render(scene,camera);
 }requestAnimationFrame(frame);

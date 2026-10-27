@@ -1,4 +1,4 @@
-# Special Delivery — v0.10
+# Special Delivery — v0.12
 
 Around the world. Right on time.
 
@@ -22,3 +22,5 @@ Run `node --test tests/flight.test.mjs tests/delivery.test.mjs`. Tests cover sph
 Flight remains assisted: no crash penalties or landing system in this prototype. The camera stays oriented to the planet during stunts. The existing hosting URL is retained.
 
 Parachute delivery update: 0.65s release delay, 1s free fall, 0.45s canopy inflation. Low or hard impacts destroy cargo even inside a delivery pad. The altitude marker adds a safety margin for the current descent rate and release delay; maneuvering after pressing Drop changes the actual release trajectory. Parachute strips, cords, opening animation, scattered crate debris and LOST GOODS feedback are rendered in 3D. Landing prediction uses the same parachute simulation.
+
+Live mission map: heading-up circular Route view with numbered delivery pads, completed markers, nearest-target highlight, blue depot and off-map direction arrows. World toggle shows the full globe using an azimuthal projection. Land outlines come from the scene geometry; objectives come from the current route every update, so completion and resets are reflected automatically.
