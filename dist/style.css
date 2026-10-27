@@ -16,3 +16,7 @@
 
 @media(max-width:650px) and (pointer:fine){.actions{bottom:110px}.instruments,.journey{bottom:20px}footer{display:none}}
 @media(max-width:420px) and (pointer:fine){.actions{bottom:174px}.journey{bottom:109px}.instruments{bottom:20px}}
+
+.dropalt{margin-top:8px;font-size:9px}.dropalt b{color:#a8edba}.dropalt b.unsafe{color:#ffad97}.alttrack{height:5px;background:#fff3;position:relative;margin-top:8px}.alttrack i{display:block;height:5px;background:#8cd6e2}.alttrack span{position:absolute;top:-4px;width:2px;height:13px;background:#ffda6a}#notice.lost{color:#ffdbcf;background:#6a2522ed;border:1px solid #f27e69;border-radius:8px;width:fit-content;max-width:90%;left:50%;transform:translateX(-50%);padding:12px 16px;box-shadow:0 4px 20px #0003}#notice{top:39%}@media(max-height:550px){.dropalt{margin-top:3px}.alttrack{margin-top:4px}#notice{top:46%;font-size:10px}}
+
+.dispatch>.dropalt{display:block}.dropalt .alttrack{display:block;width:100%}
