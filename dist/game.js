@@ -1,5 +1,6 @@
 import * as T from './vendor/three.module.js';
-import {newFlight,advance,RADIUS} from './flight.js';
+import {newFlight,advance,startStunt,RADIUS} from './flight.js';
+import {newRoute,makeParcel,stepParcel,predictImpact,resolveDelivery} from './delivery.js';
 const $=id=>document.getElementById(id), canvas=$('world');
 let renderer;
 try{renderer=new T.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});}catch(e){$('error').hidden=false;throw e;}
@@ -63,42 +64,64 @@ for(const x of [-.65,.65]){const leg=box(visual,.1,.6,.1,x,-.75,-.45,palette.dar
 const trailMaterial=mat('#ffffff',{transparent:true,opacity:.24});const trails=[];
 for(let i=0;i<28;i++){const m=sphere(scene,.11,0,0,0,trailMaterial);m.visible=false;trails.push(m);}
 let state=newFlight(),mode='intro',keys={},last=performance.now(),trailIndex=0,trailTick=0,noticeUntil=0,lapArmed=false,laps=0,tripAngle=0,previousLongitude=0;
+let route=newRoute(),packages=[],dropCooldown=0,deliveryElapsed=0;
+const destinations=[];
+function label(text){const c=document.createElement('canvas');c.width=128;c.height=128;const cx=c.getContext('2d');cx.fillStyle='#173e49';cx.beginPath();cx.arc(64,64,52,0,Math.PI*2);cx.fill();cx.strokeStyle='#ffdd87';cx.lineWidth=6;cx.stroke();cx.font='bold 62px sans-serif';cx.fillStyle='#ffedbe';cx.textAlign='center';cx.textBaseline='middle';cx.fillText(text,64,67);const texture=new T.CanvasTexture(c);const sp=new T.Sprite(new T.SpriteMaterial({map:texture,depthTest:true,toneMapped:false}));sp.scale.set(4,4,1);return sp;}
+for(const stop of route.stops){const g=place(stop.normal,2.6);const color=mat(stop.color,{emissive:stop.color,emissiveIntensity:.25});const ring=mesh(new T.TorusGeometry(7.7,.22,6,48),color,g);ring.rotation.x=-Math.PI/2;const pad=mesh(new T.CircleGeometry(7.5,32),mat(stop.color,{transparent:true,opacity:.25,side:T.DoubleSide}),g);pad.rotation.x=-Math.PI/2;const sign=label(String(stop.id+1));sign.position.y=5;g.add(sign);box(g,.15,6,.15,0,3,0,palette.white);box(g,2,1.3,.1,1,5,0,color);destinations.push({g,ring,sign,color});}
+const depot=place(new T.Vector3(0,1,.06).normalize(),12);const depotRing=mesh(new T.TorusGeometry(7,.3,8,48),mat('#63d6f6',{emissive:'#2599c5',emissiveIntensity:.8}),depot);const depotSign=label('↻');depotSign.position.y=9;depot.add(depotSign);
+const aim=mesh(new T.TorusGeometry(1.5,.13,6,24),mat('#ffda6a',{emissive:'#ffb52c',emissiveIntensity:1}));aim.visible=false;
 let audio,osc,gain,sound=false;
 function initSound(){try{audio??=new AudioContext();audio.resume();if(!osc){osc=audio.createOscillator();osc.type='sawtooth';gain=audio.createGain();gain.gain.value=0;const filter=audio.createBiquadFilter();filter.type='lowpass';filter.frequency.value=280;osc.connect(filter).connect(gain).connect(audio.destination);osc.start();}}catch{sound=false;}}
 $('sound').onclick=()=>{sound=!sound;if(sound)initSound();$('sound').textContent=sound?'SOUND ON':'SOUND OFF';$('sound').setAttribute('aria-label',sound?'Disable engine sound':'Enable engine sound');};
 function notify(text){$('notice').textContent=text;noticeUntil=performance.now()+4000;}
-function reset(){state=newFlight();tripAngle=0;previousLongitude=0;lapArmed=false;laps=0;keys={};trails.forEach(t=>t.visible=false);$('laptext').textContent='Fly straight. Find your way home.';camera.position.copy(state.normal).multiplyScalar(RADIUS+26).addScaledVector(state.forward,-17);}
-function launch(){if(mode==='intro')reset();mode='flight';$('overlay').hidden=true;document.body.classList.add('playing');$('pause').innerHTML='PAUSE <kbd>P</kbd>';last=performance.now();}
-function pause(){if(mode==='intro')return;if(mode==='paused'){launch();return;}mode='paused';keys={};$('overlay').hidden=false;$('overlay').querySelector('.eyebrow').textContent='HOLDING PATTERN';$('overlay').querySelector('h1').innerHTML='Take a<br><em>breather.</em>';$('introtext').textContent='Your little world will be right here.';$('start').innerHTML='RESUME FLIGHT <span>↗</span>';$('pause').innerHTML='RESUME <kbd>P</kbd>';}
+function reset(){for(const p of packages){scene.remove(p.mesh);p.mesh.geometry.dispose();}packages=[];route=newRoute();dropCooldown=0;deliveryElapsed=0;for(const d of destinations){d.color.color.set(route.stops[destinations.indexOf(d)].color);d.sign.visible=true;}state=newFlight();state.normal.set(0,1,.18).normalize();state.forward.set(0,.18,-1).normalize();state.throttle=8/26;state.speed=18;$('throttle').value=31;tripAngle=0;previousLongitude=0;lapArmed=false;laps=0;keys={};trails.forEach(t=>t.visible=false);$('laptext').textContent='Fly straight. Find your way home.';camera.position.copy(state.normal).multiplyScalar(RADIUS+26).addScaledVector(state.forward,-17);}
+function launch(){if(mode==='intro'||mode==='complete')reset();mode='flight';$('overlay').hidden=true;document.body.classList.add('playing');$('pause').innerHTML='PAUSE <kbd>P</kbd>';last=performance.now();}
+function pause(){if(mode==='intro'||mode==='complete')return;if(mode==='paused'){launch();return;}mode='paused';keys={};$('overlay').hidden=false;$('overlay').querySelector('.eyebrow').textContent='HOLDING PATTERN';$('overlay').querySelector('h1').innerHTML='Take a<br><em>breather.</em>';$('introtext').textContent='Your little world will be right here.';$('start').innerHTML='RESUME FLIGHT <span>↗</span>';$('pause').innerHTML='RESUME <kbd>P</kbd>';}
 $('start').onclick=launch;$('pause').onclick=pause;$('reset').onclick=()=>{reset();launch();notify('BACK OVER KESTREL ISLAND');};
-const bindings={ArrowLeft:'left',a:'left',A:'left',ArrowRight:'right',d:'right',D:'right',ArrowUp:'up',w:'up',W:'up',ArrowDown:'down',s:'down',S:'down',Shift:'boost'};
-window.addEventListener('keydown',e=>{if(bindings[e.key]){e.preventDefault();keys[bindings[e.key]]=true;}if(e.repeat)return;if(e.key==='p'||e.key==='P')pause();if((e.key==='r'||e.key==='R')&&mode!=='intro'){reset();launch();}if(e.key==='Escape'&&mode==='flight')pause();});
+const bindings={ArrowLeft:'left',a:'left',A:'left',ArrowRight:'right',d:'right',D:'right',ArrowUp:'up',w:'up',W:'up',ArrowDown:'down',s:'down',S:'down',Shift:'boost','-':'slower','=':'faster','+':'faster'};
+window.addEventListener('keydown',e=>{if(e.target instanceof HTMLInputElement)return;if(bindings[e.key]){e.preventDefault();keys[bindings[e.key]]=true;}if(e.code==='Space'){e.preventDefault();if(!e.repeat)drop();}if(e.repeat)return;if(e.key.toLowerCase()==='q')stunt('roll',-1);if(e.key.toLowerCase()==='e')stunt('roll',1);if(e.key.toLowerCase()==='l')stunt('loop');if(e.key==='p'||e.key==='P')pause();if((e.key==='r'||e.key==='R')&&mode!=='intro'){reset();launch();}if(e.key==='Escape'&&mode==='flight')pause();});
 window.addEventListener('keyup',e=>{if(bindings[e.key])keys[bindings[e.key]]=false;});
 window.addEventListener('blur',()=>{keys={};if(mode==='flight')pause();});document.addEventListener('visibilitychange',()=>{if(document.hidden&&mode==='flight')pause();});
 document.querySelectorAll('[data-control]').forEach(b=>{b.onpointerdown=e=>{e.preventDefault();b.setPointerCapture(e.pointerId);keys[b.dataset.control]=true;};b.onpointerup=b.onpointercancel=b.onlostpointercapture=()=>keys[b.dataset.control]=false;});
 function resize(){renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();}window.addEventListener('resize',resize);resize();reset();
 const right=new T.Vector3(),up=new T.Vector3(),back=new T.Vector3(),basis=new T.Matrix4(),target=new T.Vector3(),camTarget=new T.Vector3();
+function stunt(type,direction=1){if(mode!=='flight')return;const error=startStunt(state,type,direction);notify(error||(type==='loop'?'LOOP · HOLD ON TO YOUR PARCELS':'BARREL ROLL'));}
+function drop(){if(mode!=='flight')return;if(dropCooldown>0)return;if(state.stunt){notify('Level out before releasing cargo.');return;}if(!route.parcels){notify('Out of parcels. Fly through the blue depot hoop to refill.');return;}route.parcels--;route.drops++;dropCooldown=.4;const p=makeParcel(state);p.condition=route.condition;p.mesh=box(scene,.85,.85,.85,0,0,0,palette.trunk);p.mesh.position.copy(p.position);packages.push(p);notify('PARCEL AWAY');}
+$('drop').onclick=drop;$('rollleft').onclick=()=>stunt('roll',-1);$('rollright').onclick=()=>stunt('roll',1);$('loop').onclick=()=>stunt('loop');$('throttle').oninput=e=>{state.throttle=Number(e.target.value)/100;};
+function completeRoute(){route.complete=true;mode='complete';keys={};aim.visible=false;const bonus=Math.max(0,300-Math.floor(route.elapsed));route.score+=bonus;let best=route.score;try{best=Math.max(Number(localStorage.getItem('special-delivery-best'))||0,best);localStorage.setItem('special-delivery-best',String(best));}catch{}$('overlay').hidden=false;$('overlay').querySelector('.eyebrow').textContent='KESTREL COURIER · ROUTE COMPLETE';$('overlay').querySelector('h1').innerHTML='Signed.<br><em>Delivered.</em>';$('introtext').textContent=`5 deliveries · ${route.score} points · ${Math.round(route.elapsed)} seconds. Accuracy ${Math.round(5/route.drops*100)}%. Time bonus +${bonus}. Personal best ${best}.`;$('start').innerHTML='REPLAY ROUTE <span>↗</span>';$('pause').textContent='ROUTE COMPLETE';}
+function updateDelivery(dt){
+ route.elapsed+=dt;dropCooldown=Math.max(0,dropCooldown-dt);deliveryElapsed+=dt;
+ if(state.stunt)route.condition=Math.max(50,route.condition-dt*1.5);
+ const pos=state.normal.clone().multiplyScalar(RADIUS+state.altitude);
+ if(route.parcels<12&&pos.distanceTo(depot.position)<8){route.parcels=12;route.condition=100;notify('DEPOT REFILL · 12 FRESH PARCELS');}
+ for(let i=packages.length-1;i>=0;i--){const p=packages[i];let hit=false;for(let t=0;t<dt;t+=1/120){if(stepParcel(p,Math.min(1/120,dt-t))){hit=true;break;}}p.mesh.position.copy(p.position);p.mesh.rotation.x+=dt*2;p.mesh.rotation.z+=dt;
+  if(hit||p.age>12){const saved=route.condition;route.condition=p.condition;const result=hit?resolveDelivery(route,p.position):null;route.condition=saved;scene.remove(p.mesh);p.mesh.geometry.dispose();packages.splice(i,1);if(result){notify(`DELIVERED · ${result.name} · +${result.points}`);destinations.forEach((d,j)=>{if(route.stops[j].done){d.color.color.set('#61dca4');d.sign.visible=false;}});if(route.complete){completeRoute();break;}}else notify('MISSED · Try less throttle and release before the pad.');}
+ }
+ if(deliveryElapsed>.08){deliveryElapsed=0;const landing=state.stunt?null:predictImpact(state);aim.visible=!!landing&&!route.complete;if(landing){aim.position.copy(landing);aim.quaternion.setFromUnitVectors(new T.Vector3(0,0,1),landing.clone().normalize());}
+  const remaining=route.stops.filter(s=>!s.done);let next=remaining.sort((a,b)=>state.normal.distanceTo(a.normal)-state.normal.distanceTo(b.normal))[0];if(!next&&!route.complete)return;
+  if(route.parcels===0){next={name:'Blue depot · refill',normal:depot.position.clone().normalize()};}
+  if(next){const toward=next.normal.clone().addScaledVector(state.normal,-next.normal.dot(state.normal)).normalize();const side=new T.Vector3().crossVectors(state.forward,state.normal);const angle=Math.atan2(toward.dot(side),toward.dot(state.forward))*180/Math.PI;const distance=Math.acos(Math.max(-1,Math.min(1,state.normal.dot(next.normal))))*RADIUS;$('nextstop').textContent=next.name;$('bearing').textContent=(Math.abs(angle)<12?'AHEAD':(angle>0?'RIGHT ':'LEFT ')+Math.round(Math.abs(angle))+'°')+' · '+Math.round(distance*10)+'m';}
+  $('cargo').textContent=`${route.parcels} PARCELS · CARGO ${Math.round(route.condition)}% · SCORE ${route.score}`;$('laptext').textContent=`${Math.round(route.elapsed)}s · ${route.drops} drops`;
+ }
+}
 let hudTick=0;
 function frame(now){requestAnimationFrame(frame);const dt=Math.min((now-last)/1000,.04);last=now;
- if(mode!=='paused'){
-  advance(state,{turn:mode==='flight'?(Number(!!keys.right)-Number(!!keys.left)):0,climb:mode==='flight'?(Number(!!keys.up)-Number(!!keys.down)):0,boost:mode==='flight'&&keys.boost},dt*(mode==='intro'?.28:1));
+ if(mode==='flight'||mode==='intro'){
+  advance(state,{turn:mode==='flight'?(Number(!!keys.right)-Number(!!keys.left)):0,climb:mode==='flight'?(Number(!!keys.up)-Number(!!keys.down)):0,boost:mode==='flight'&&keys.boost,throttle:mode==='flight'?(Number(!!keys.faster)-Number(!!keys.slower)):0},dt*(mode==='intro'?.28:1));
   prop.rotation.z+=dt*(keys.boost?95:65);clouds.rotation.y+=dt*.001;
  }
  const position=state.normal.clone().multiplyScalar(RADIUS+state.altitude);aircraft.position.copy(position);
  right.crossVectors(state.forward,state.normal).normalize();up.copy(state.normal);back.copy(state.forward).negate();basis.makeBasis(right,up,back);aircraft.quaternion.setFromRotationMatrix(basis);
- visual.rotation.z=-state.bank;visual.rotation.x=state.pitch;
+ visual.rotation.z=-state.bank-state.roll;visual.rotation.x=state.pitch;
  target.copy(position).addScaledVector(state.forward,-17).addScaledVector(state.normal,12);
  camera.position.lerp(target,1-Math.exp(-5*dt));camera.up.copy(state.normal);camTarget.copy(position).addScaledVector(state.forward,12);camera.lookAt(camTarget);
  const wantedFov=keys.boost&&mode==='flight'?85:78;camera.fov+=(wantedFov-camera.fov)*(1-Math.exp(-2*dt));camera.updateProjectionMatrix();
  if(mode==='flight'){
-  // Accumulate signed longitude around the starting great circle, not just distance.
-  const longitude=Math.atan2(-state.normal.z,state.normal.y);let delta=longitude-previousLongitude;if(delta>Math.PI)delta-=Math.PI*2;if(delta< -Math.PI)delta+=Math.PI*2;tripAngle+=delta;previousLongitude=longitude;
-  if(state.normal.y<-.6)lapArmed=true;
-  if(lapArmed&&state.normal.y>.985&&Math.abs(tripAngle)>Math.PI*1.8){laps++;lapArmed=false;tripAngle=0;notify('WELCOME HOME · ONE WORLD, ONE COMPLETE FLIGHT');$('laptext').textContent=`${laps} world tour${laps===1?'':'s'} complete. Keep exploring.`;}
+  updateDelivery(dt);
   trailTick+=dt;if(trailTick>.06){trailTick=0;const t=trails[trailIndex++%trails.length];t.position.copy(position).addScaledVector(state.forward,-2.2);t.visible=!!keys.boost;}
  }
  if(audio&&gain){gain.gain.setTargetAtTime(sound&&mode==='flight'?.025:0,audio.currentTime,.1);osc.frequency.setTargetAtTime(55+state.speed*1.4,audio.currentTime,.12);}
  if(now>noticeUntil)$('notice').textContent='';
- hudTick+=dt;if(hudTick>.1){hudTick=0;$('speed').textContent=Math.round(state.speed*3);$('altitude').textContent=Math.round(state.altitude*10);const pct=Math.min(99,Math.round(Math.abs(tripAngle)/(Math.PI*2)*100));$('progress').textContent=pct+'%';$('progressbar').style.width=pct+'%';let nearest=null,best=-1;for(const i of islands){const dot=state.normal.dot(i.n);if(dot>best){best=dot;nearest=i;}}$('region').textContent=best>.85?nearest.label:'OPEN OCEAN';}
+ hudTick+=dt;if(hudTick>.1){hudTick=0;$('speed').textContent=Math.round(state.speed*3);$('altitude').textContent=Math.round(state.altitude*10);const pct=route.delivered*20;$('progress').textContent=route.delivered+'/5';$('progressbar').style.width=pct+'%';$('throttle').value=Math.round(state.throttle*100);$('throttlevalue').textContent=Math.round(state.throttle*100)+'%';let nearest=null,best=-1;for(const i of islands){const dot=state.normal.dot(i.n);if(dot>best){best=dot;nearest=i;}}$('region').textContent=best>.85?nearest.label:'OPEN OCEAN';}
  renderer.render(scene,camera);
 }requestAnimationFrame(frame);
