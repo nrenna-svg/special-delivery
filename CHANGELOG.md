@@ -1,5 +1,11 @@
 # Special Delivery changelog
 
+## v0.84 — The title screen is back
+
+- Opens on the old title card with the plane flying around the planet behind it, now with a menu: Enter the hangar, Plane shop, Worlds, How to play, Settings, Credits (game.js `showTitle`, `leaveTitle`, `openPanel`).
+- Settings: sound, music, invert mouse, mouse sensitivity (50-160%), show/hide the DEV button.
+- Hangar: ◂ Title screen button. Pause is hidden on the title.
+
 ## v0.82 — Balance pass
 
 Ran a route and economy simulator over every job type on every island (both worlds).

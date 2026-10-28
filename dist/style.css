@@ -269,3 +269,25 @@ body.missile #vignette{box-shadow:inset 0 0 160px 40px #ff2a2a88;animation:missi
 .job .meta{flex-wrap:wrap}
 .tabpane{overflow:auto;padding-bottom:4px}
 #takejob{position:sticky;bottom:0;z-index:2;flex-shrink:0}
+
+/* v0.84 title screen and menus */
+#titlemenu{display:grid;gap:12px;max-width:520px;margin-top:6px}
+#titlemenu .primary{min-width:0;width:100%;font-size:14px}
+.tmrow{display:flex;flex-wrap:wrap;gap:8px}
+.tmrow button{font-size:11px;letter-spacing:1.6px;font-weight:700;padding:11px 14px;background:#0f3a48d9}
+#tm-career{font-size:12px;opacity:.8;margin:0;letter-spacing:.4px}
+body:not(.titlescreen) #titlemenu{display:none}
+body.titlescreen #modes,body.titlescreen #days,body.titlescreen #runinfo,body.titlescreen #start,body.titlescreen .intro-note{display:none!important}
+#titlepanel{position:absolute;right:6vw;top:50%;transform:translateY(-50%);width:min(460px,calc(100% - 32px));max-height:80vh;overflow:auto;background:#0d2f3be8;border:1px solid #ffffff30;border-radius:10px;padding:22px 24px;z-index:6;font-size:13px;line-height:1.6}
+#titlepanel[hidden],#titlepanel .tp[hidden]{display:none}
+#titlepanel h2{font-family:'Barlow Condensed',sans-serif;font-size:30px;letter-spacing:1.5px;margin:0 0 10px;color:#ffe2a0}
+#titlepanel ul{padding-left:18px;margin:0;display:grid;gap:8px}
+#titlepanel label{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #ffffff1a}
+#titlepanel input[type=checkbox]{width:20px;height:20px;accent-color:#ffd37d}
+#titlepanel input[type=range]{flex:1;max-width:160px;accent-color:#ffd37d}
+#tp-close{position:absolute;right:10px;top:10px;padding:4px 9px}
+#tohome{position:absolute;left:32px;top:84px;z-index:7;font-size:10px;letter-spacing:1.5px;padding:7px 10px}
+body:not(.inhangar) #tohome{display:none}
+body.nodev #devbtn,body.nodev #devpanel{display:none!important}
+@media(max-width:760px){#titlepanel{right:16px;top:auto;bottom:16px;transform:none}#tohome{left:16px;top:16px}}
+body.titlescreen #pause{display:none}

@@ -301,7 +301,8 @@ const bindings={ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down
 // Mouse steering: the cursor's offset from screen center sets bank (left/right) and climb (up = nose up).
 // Steering starts on the first mouse move after takeoff or resume, so a resting cursor never yanks the plane.
 const mouse={active:false,x:0,y:0},MOUSE_DEAD=.06,MOUSE_FULL=.45;
-const mouseAxis=v=>{const a=Math.abs(v);return a<MOUSE_DEAD?0:Math.sign(v)*Math.min(1,(a-MOUSE_DEAD)/(MOUSE_FULL-MOUSE_DEAD));};
+// Sensitivity (Settings, v0.84) shortens or lengthens the throw to full deflection.
+const mouseAxis=v=>{const a=Math.abs(v),full=MOUSE_DEAD+(MOUSE_FULL-MOUSE_DEAD)*100/((typeof settings!=='undefined'&&settings.sens)||100);return a<MOUSE_DEAD?0:Math.sign(v)*Math.min(1,(a-MOUSE_DEAD)/(full-MOUSE_DEAD));};
 function releaseMouse(){mouse.active=false;document.body.classList.remove('mousefly');}
 window.addEventListener('pointermove',e=>{if(e.pointerType&&e.pointerType!=='mouse')return;const r=canvas.getBoundingClientRect();mouse.x=Math.max(-1,Math.min(1,(e.clientX-r.left)/r.width*2-1));mouse.y=Math.max(-1,Math.min(1,(e.clientY-r.top)/r.height*2-1));
  const el=$('reticle');el.style.transform=`translate(${e.clientX-r.left}px,${e.clientY-r.top}px)`;if(mode==='flight'&&!mouse.active){mouse.active=true;document.body.classList.add('mousefly');}});
@@ -610,6 +611,29 @@ function fuelNeed(j){return Math.round(routeLength(j)*1.25/unitsPerPercent());}
 let bingoWarned=false;
 function bingoCheck(){if(!job||mode!=='flight'||route.jobDone&&state.normal.y>.97)return;const home=Math.acos(Math.max(-1,Math.min(1,state.normal.y)))*RADIUS,need=home*1.15/unitsPerPercent()+3;
  if(state.fuel>0&&state.fuel<need){if(!bingoWarned){bingoWarned=true;audio.sfx.lowfuel();notify(`BINGO FUEL · ${Math.ceil(state.fuel)}% LEFT, ABOUT ${Math.ceil(need)}% TO GET HOME · TURN FOR HOME NOW`);noticeUntil=performance.now()+6000;}}else if(state.fuel>need+8)bingoWarned=false;}
+// ── Title screen and menus (v0.84) ───────────────────────────────────────────────────────
+// The game opens on the title card with the little plane flying around the planet behind it.
+// From here: Enter the hangar (job board), Plane shop, Worlds, How to play, Settings, Credits.
+const SETTINGS_KEY='special-delivery-settings';
+let settings={invert:false,sens:100,dev:true};try{settings={...settings,...JSON.parse(localStorage.getItem(SETTINGS_KEY)||'{}')};}catch{}
+function saveSettings(){try{localStorage.setItem(SETTINGS_KEY,JSON.stringify(settings));}catch{}applySettings();}
+function applySettings(){document.body.classList.toggle('nodev',!settings.dev);$('st-sensv').textContent=settings.sens+'%';}
+function showTitle(){job=null;reset();mode='intro';releaseMouse();keys={};document.body.classList.remove('inhangar','playing','pullup','missile');document.body.classList.add('titlescreen');
+ $('hangarui').hidden=true;$('titlepanel').hidden=true;$('overlay').hidden=false;state.altitude=17;state.speed=23;camera.fov=78;camera.updateProjectionMatrix();snapChaseCamera();
+ $('overlay').querySelector('.eyebrow').textContent='AROUND THE WORLD. RIGHT ON TIME.';$('overlay').querySelector('h1').innerHTML='Small plane.<br><em>Special</em> delivery.';
+ $('introtext').innerHTML=`Take courier jobs from the hangar board and fly cargo across ${HERE.name==='Kestrel'?'a little ocean planet':'the red mesas of '+HERE.name}. The harder the island, the bigger the pay, and the bigger the risk.`;
+ $('tm-career').textContent=career.flights?`${RANKS[rankOf(career)].name} · ${money(career.cash)} in the bank · ${career.jobsDone} job${career.jobsDone===1?'':'s'} done · ${HERE.name}`:'A new career is waiting in the hangar.';
+ $('pause').innerHTML='PAUSE <kbd>P</kbd>';}
+function leaveTitle(tab='jobs'){audio.unlock();if(mode!=='intro')return;fadeTo(()=>{document.body.classList.remove('titlescreen');hangarTab=tab;enterHangar();});}
+function openPanel(id){audio.unlock();$('titlepanel').hidden=false;for(const k of ['howto','settings','credits'])$('tp-'+k).hidden=k!==id;
+ if(id==='settings'){$('st-sfx').checked=audio.sfxOn;$('st-music').checked=audio.musicOn;$('st-invert').checked=settings.invert;$('st-sens').value=settings.sens;$('st-dev').checked=settings.dev;applySettings();}}
+$('tm-hangar').onclick=()=>leaveTitle('jobs');$('tm-shop').onclick=()=>leaveTitle('shop');$('tm-worlds').onclick=()=>leaveTitle('worlds');
+$('tm-howto').onclick=()=>openPanel('howto');$('tm-settings').onclick=()=>openPanel('settings');$('tm-credits').onclick=()=>openPanel('credits');$('tp-close').onclick=()=>{$('titlepanel').hidden=true;};
+$('st-sfx').onchange=e=>{audio.setSfx(e.target.checked);audioLabels();};$('st-music').onchange=e=>{audio.setMusic(e.target.checked);audioLabels();};
+$('st-invert').onchange=e=>{settings.invert=e.target.checked;saveSettings();};$('st-sens').oninput=e=>{settings.sens=Number(e.target.value);saveSettings();};$('st-dev').onchange=e=>{settings.dev=e.target.checked;saveSettings();};
+$('tohome').onclick=()=>{if(mode!=='hangar'||fxPart)return;fadeTo(showTitle);};
+window.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('titlepanel').hidden)$('titlepanel').hidden=true;else if(e.key==='Enter'&&mode==='intro'&&$('titlepanel').hidden)leaveTitle('jobs');});
+applySettings();
 
 function frame(now){requestAnimationFrame(frame);const dt=Math.min((now-last)/1000,.04);last=now;let camHandled=false;
  if(mode==='cutscene')camHandled=updateCutscene(dt);
@@ -621,7 +645,7 @@ function frame(now){requestAnimationFrame(frame);const dt=Math.min((now-last)/10
  else if(mode==='flight'||mode==='intro'){
   const steer=mode==='flight'&&mouse.active,clamp1=v=>Math.max(-1,Math.min(1,v));
   {const w=extras.carryWeight();state.perf=w?{...perf,speed:perf.speed*(1-Math.max(.02,.07*w-.03*(perf.strength-w))),climb:perf.climb*(1-.05*w)}:perf;}
-  advance(state,{turn:mode==='flight'?clamp1(Number(!!keys.right)-Number(!!keys.left)+(steer?mouseAxis(mouse.x):0)+extras.buffet.turn+Math.sin(worldTime*8.1)*seaLife.pull(state.normal,worldTime)*1.3):0,climb:mode==='flight'?clamp1(Number(!!keys.up)-Number(!!keys.down)+(steer?mouseAxis(-mouse.y):0)+extras.buffet.climb+Math.sin(worldTime*6.3+1)*seaLife.pull(state.normal,worldTime)):0,boost:mode==='flight'&&keys.boost&&state.fuel>0,throttle:mode==='flight'?(Number(!!keys.faster)-Number(!!keys.slower)):0,engineOut:mode==='flight'&&state.fuel<=0,floor:mode==='flight'?0:7},dt*(mode==='intro'?.28:1));
+  advance(state,{turn:mode==='flight'?clamp1(Number(!!keys.right)-Number(!!keys.left)+(steer?mouseAxis(mouse.x):0)+extras.buffet.turn+Math.sin(worldTime*8.1)*seaLife.pull(state.normal,worldTime)*1.3):0,climb:mode==='flight'?clamp1(Number(!!keys.up)-Number(!!keys.down)+(steer?mouseAxis(settings.invert?mouse.y:-mouse.y):0)+extras.buffet.climb+Math.sin(worldTime*6.3+1)*seaLife.pull(state.normal,worldTime)):0,boost:mode==='flight'&&keys.boost&&state.fuel>0,throttle:mode==='flight'?(Number(!!keys.faster)-Number(!!keys.slower)):0,engineOut:mode==='flight'&&state.fuel<=0,floor:mode==='flight'?0:7},dt*(mode==='intro'?.28:1));
   if(mode==='flight'){updateFuelAndTerrain(dt);if(mode==='flight'){careerFlight(dt);bingoCheck();}if(run.pendingNext>0&&(run.pendingNext-=dt)<=0)nextDay();}
   prop.rotation.z+=dt*(state.fuel<=0&&mode==='flight'?Math.max(0,8):keys.boost?95:65);clouds.rotation.y+=dt*.001;
  }
@@ -650,4 +674,4 @@ function frame(now){requestAnimationFrame(frame);const dt=Math.min((now-last)/10
  mapTick+=dt;if(mapTick>.08){mapTick=0;const summary=drawMinimap(mapCanvas,state,islands,route.stops,depot.position.clone().normalize(),mapWorld,now/1000,gateGroup.visible?gateNormal:null,[...extras.markers(),...threats.markers()]);$('mapstatus').textContent=job?(route.jobDone?'Job done · head home':`${job.units-route.done} to go`):route.complete?'Head home · H marks the gate':`${summary.remaining} / ${summary.total} stops left`;}
  renderer.render(scene,camera);
  renderPip(dt);
-}enterHangar();requestAnimationFrame(frame);
+}showTitle();requestAnimationFrame(frame);
