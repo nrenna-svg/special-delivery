@@ -106,6 +106,13 @@ export function createAudio({context=null}={}){
   crash(){noise(1.4,{freq:900,to:90,vol:.6});tone(70,.9,{vol:.5,slide:30});for(let i=0;i<7;i++)noise(.08,{filter:'highpass',freq:3000,vol:.2,at:.1+i*.09+Math.random()*.05});},
   horn(type){const f=type==='cargo'?70:type==='tug'?110:type==='sail'?330:150;tone(f,1.1,{type:'sawtooth',vol:.05,attack:.08});tone(f*1.5,1.1,{type:'sawtooth',vol:.03,attack:.08});},
   tick(){tone(1400,.05,{type:'square',vol:.05});},
+  // Workshop sounds for plane upgrades (v0.76): drills, hammers, ratchets and an impact wrench.
+  drill(at=0,dur=.9){const f=260+Math.random()*80;tone(f*.6,.18,{type:'sawtooth',vol:.05,at,slide:f});for(let k=0;k<Math.round(dur/.12);k++)tone(f*(1+k%2*.04),.14,{type:'sawtooth',vol:.045,at:at+.15+k*.12,attack:.01});tone(f,.25,{type:'sawtooth',vol:.04,at:at+dur,slide:f*.5});noise(dur+.2,{filter:'bandpass',freq:2600,q:3,vol:.06,at});},
+  hammer(at=0){tone(1900+Math.random()*700,.32,{type:'triangle',vol:.09,at});tone(3100+Math.random()*500,.18,{vol:.04,at});noise(.05,{filter:'highpass',freq:3500,vol:.3,at});tone(120,.08,{vol:.18,at,slide:70});},
+  ratchet(at=0,clicks=7){for(let k=0;k<clicks;k++){noise(.025,{filter:'highpass',freq:4200,vol:.22,at:at+k*.07});tone(2400,.02,{type:'square',vol:.02,at:at+k*.07});}},
+  impact(at=0){for(let k=0;k<5;k++){noise(.07,{filter:'bandpass',freq:900,q:2,vol:.28,at:at+k*.075});tone(150,.06,{type:'square',vol:.05,at:at+k*.075});}noise(.3,{filter:'highpass',freq:5000,vol:.06,at:at+.38});},
+  workshop(kind='upgrade'){const plan=kind==='unlock'?[['impact',0],['hammer',.5],['hammer',.72],['drill',.95],['ratchet',1.95],['hammer',2.5]]:[['ratchet',0],['drill',.55],['hammer',1.55],['hammer',1.78],['impact',2.05]];
+   for(const [k,t] of plan)sfx[k](t);['C5','G5','C6'].forEach((n,i)=>note(n,.3,{type:'triangle',vol:.08,at:(kind==='unlock'?2.9:2.55)+i*.08}));},
   late(){note('D4',.35,{type:'sawtooth',vol:.06});note('A3',.5,{type:'sawtooth',vol:.06,at:.25});},
   ontime(){['C6','E6','G6','C7'].forEach((n,i)=>note(n,.25,{vol:.05,at:.5+i*.06}));},
   cheer(){for(let i=0;i<14;i++)tone(500+Math.random()*700,.18+Math.random()*.2,{type:'triangle',vol:.025,at:Math.random()*.9,slide:600+Math.random()*900});noise(1.4,{filter:'bandpass',freq:1600,q:.4,vol:.08});}

@@ -12,7 +12,7 @@ export const RUNWAY_HALF=33, RUNWAY_WIDTH=8, RUNWAY_HEIGHT=2.25, GROUND_ALT=3.65
 export const PIVOT=RADIUS+GROUND_ALT;
 // Hangar: a quonset hut off the runway's +z end, doors facing the runway (-x).
 export const HANGAR={x:24,z:28,length:15,radius:8,door:11};
-export const PARK={x:25,z:28};                     // plane parked inside, nose to the doors
+export const PARK={x:27,z:28};                     // plane parked deep inside (v0.76), nose to the doors
 export const TAXI_SPEED=7, LIFTOFF_SPEED=15, CRUISE_ALT=15, CRUISE_SPEED=18;
 export const DOOR_TIME=1.8, CLIMB_TIME=2.7;
 const TURN_R=6, LINEUP_Z=PARK.z-TURN_R, LIFTOFF_Z=0;

@@ -1,5 +1,12 @@
 # Special Delivery changelog
 
+## v0.76 — Unlock fees everywhere, a plane that shows its upgrades, workshop sounds
+
+- **Every part needs an unlock first**, starter parts included (Engine $600, Fuel tank $500, Cargo hold $400), so each part is six purchases. The shop shows a padlock pip then five level pips.
+- **Visible upgrades for every level** (game.js `LOOKS`, one group per part): Engine (red cowl, chrome exhaust stacks, radial cylinder heads, chrome spinner, gold spinner + scoop), Fuel tank (belly tank growing, underwing tanks, gold bands), Cargo hold (belly pod, straps, roof rack with crates, side panniers), Wings (longer tips each level, winglets, leading-edge strips, gold trim), Ailerons (bigger red aileron panels, tail fin, ventral fin, chrome weights), Parachutes (canisters on the spine, drogue pack, gold), Winch (bigger drum, chrome coil, boom, pulley, gold hook guard), Landing gear (fat tyres, wheel spats, struts, tail wheel, gold hubs).
+- **Workshop show on every purchase:** impact wrench, hammer strikes, a drill and a ratchet (audio.js `drill`/`hammer`/`ratchet`/`impact`/`workshop`; the unlock gets a longer sequence), sparks at the part, a little shake, and the new pieces pop into place.
+- **Hangar framing:** the plane is parked deeper in the hangar (`PARK.x` 27) and the camera frames it left of the job board (or above it on phones), so the board no longer covers the plane.
+
 ## v0.74 — Plane shop, pilot ranks, and World 2: Mesa Rojo
 
 Making money now buys something.

@@ -407,7 +407,7 @@ function showLedger(d){$('board').hidden=true;$('ledger').hidden=false;$('ledger
 // Park the plane in the hangar and show the board (or a ledger first).
 function enterHangar(ledger=null){job=null;reset();mode='hangar';releaseMouse();keys={};document.body.classList.remove('playing','pullup');document.body.classList.add('inhangar');
  $('overlay').hidden=true;$('hangarui').hidden=false;applyRunwayPose(state,rolloutPose(0));state.speed=0;state.fuel=100;field.setDoors(0);gateGroup.visible=false;aim.visible=false;
- visual.rotation.set(0,0,0);field.hangarView(fieldPos,fieldLook);camera.position.copy(fieldPos);camera.up.copy(state.normal);camera.lookAt(fieldLook);camera.fov=62;camera.updateProjectionMatrix();
+ visual.rotation.set(0,0,0);field.hangarView(fieldPos,fieldLook,innerWidth>760?'right':'bottom');camera.position.copy(fieldPos);camera.up.copy(state.normal);camera.lookAt(fieldLook);camera.fov=62;camera.updateProjectionMatrix();
  depot.visible=LEGACY_MODES;{const b=document.querySelector('.hgbar .brand div');b.firstChild.nodeValue=IN_DESERT?'DUSTWATER COURIER CO.':'KESTREL COURIER CO.';b.querySelector('small').textContent=`HANGAR · ${HERE.name.toUpperCase()}`;$('boardsub').textContent=IN_DESERT?'Pick a job. Higher, harsher mesas pay more.':'Pick a job. Harder islands pay more.';}careerHud();if(ledger)showLedger(ledger);else{$('ledger').hidden=true;$('board').hidden=false;renderBoard();setTab(hangarTab);}}
 function takeJob(){if(mode!=='hangar'||!board[selectedJob])return;audio.unlock();job=board[selectedJob];reset();route.parcels=job.parcels+perf.spares;
  $('hangarui').hidden=true;document.body.classList.remove('inhangar');applyRunwayPose(state,rolloutPose(0));state.fuel=100;state.throttle=8/26;$('throttle').value=31;lowFuelStage=0;
@@ -488,8 +488,8 @@ function renderShop(){const box=$('parts');box.innerHTML='';const s=stats(career
   const after=a.kind==='upgrade'?statAfter(career,p.id,st.level+1):null;
   const stat=p.show.map(([k,label,f])=>after?`${label}: <s>${f(s[k])}</s> → ${f(after[k])}`:`${label}: ${f(s[k])}`).join(' · ');
   const btn=a.kind==='max'?'MAXED':a.kind==='rank'?`LOCKED<small>${RANKS[p.rank].name}</small>`:a.kind==='unlock'?`UNLOCK<small>${money(a.cost)}</small>`:`LEVEL ${st.level+1}<small>${money(a.cost)}</small>`;
-  el.innerHTML=`<span class="pi">${p.icon}</span><h3>${p.name} <span class="pips">${Array.from({length:MAX_LEVEL},(_,i)=>`<i class="${i<st.level?'on':''}"></i>`).join('')}</span></h3><button ${a.ok?'class="buyable"':'disabled'} title="${a.why||''}">${btn}</button><p>${p.blurb}${!st.unlocked&&a.kind==='rank'?` Unlocks at ${RANKS[p.rank].name} rank for ${money(p.unlock)}.`:''}</p>${st.unlocked?`<span class="stat">${stat}</span>`:''}`;
-  el.querySelector('button').onclick=()=>{if(buy(career,p.id)){saveCareer(career);perf=stats(career);state.perf=perf;planeLook();audio.unlock();audio.sfx.refill();careerHud();renderShop();}};box.appendChild(el);}}
+  el.innerHTML=`<span class="pi">${p.icon}</span><h3>${p.name} <span class="pips"><i class="key ${st.unlocked?'on':''}" title="Unlock">${st.unlocked?'🔓':'🔒'}</i>${Array.from({length:MAX_LEVEL},(_,i)=>`<i class="${i<st.level?'on':''}"></i>`).join('')}</span></h3><button ${a.ok?'class="buyable"':'disabled'} title="${a.why||''}">${btn}</button><p>${p.blurb}${!st.unlocked&&a.kind==='rank'?` Unlocks at ${RANKS[p.rank].name} rank for ${money(p.unlock)}.`:''}</p>${st.unlocked?`<span class="stat">${stat}</span>`:''}`;
+  el.querySelector('button').onclick=()=>{if(fxPart)return;const kind=a.kind;if(buy(career,p.id)){saveCareer(career);perf=stats(career);state.perf=perf;workshopFx(p.id,kind);careerHud();renderShop();}};box.appendChild(el);}}
 function worldReady(w){const r=rankOf(career);const checks=[{ok:r>=w.rank,text:`${RANKS[w.rank].name} rank or higher`}];
  for(const [id,lv] of Object.entries(w.req))checks.push({ok:partState(career,id).level>=lv,text:`${PART[id].name} level ${lv}`});
  checks.push({ok:career.cash>=w.fee,text:`${money(w.fee)} ferry license`});return checks;}
@@ -501,22 +501,70 @@ function renderWorlds(){const box=$('worlds');box.innerHTML='';const owned=caree
 function ferryTo(w){const el=document.createElement('div');el.id='ferry';el.innerHTML=`<small>FERRY FLIGHT</small><h1>${w.name.toUpperCase()}</h1><p>${w.tagline}</p><div class="trail"><i></i></div>`;$('flight').appendChild(el);audio.unlock();audio.sfx.complete();
  setWorld(w.id);setTimeout(()=>location.reload(),3800);}
 
-// Upgrades show on the plane (v0.74): a bigger cowl for the engine, a belly tank, longer wingtips, a winch drum and a gold stripe per maxed part.
-const upgradeLook=new T.Group();visual.add(upgradeLook);
-function planeLook(){upgradeLook.clear();const lv=id=>partState(career,id).level,gm=palette.gold,dm=palette.dark,mm=palette.metal;
- if(lv('engine')){const c=mesh(new T.CylinderGeometry(.5+lv('engine')*.015,.58+lv('engine')*.015,.36,14,1,true),palette.red,upgradeLook);c.rotation.x=Math.PI/2;c.position.z=-1.58;}
- if(lv('fuel')){const t=mesh(new T.CapsuleGeometry(.22+lv('fuel')*.03,.9+lv('fuel')*.12,4,8),palette.red,upgradeLook);t.rotation.x=Math.PI/2;t.position.set(0,-.78,-.1);}
- if(lv('wings'))for(const x of [-1,1]){box(upgradeLook,.28*lv('wings'),.14,1.2,x*(3.9+.14*lv('wings')),1,-.3,gm);}
- if(lv('winch')){const d=mesh(new T.CylinderGeometry(.22,.22,.5,10),dm,upgradeLook);d.rotation.z=Math.PI/2;d.position.set(0,-.62,.5);}
- if(lv('cargo'))box(upgradeLook,.9,.35,.9+lv('cargo')*.08,0,-.62,.9,palette.trunk);
- const maxed=PARTS.filter(p=>lv(p.id)>=MAX_LEVEL).length;for(let k=0;k<maxed;k++)box(upgradeLook,.04,.08,.9,.58,.1+k*.1,-.3,gm);
- upgradeLook.traverse(o=>{if(o.isMesh){o.castShadow=true;}});}
+// Upgrades show on the plane (v0.76): every level of every part adds or changes something you can
+// see. Each part builds into its own group, so a purchase can animate just that part while the
+// workshop sounds play (sparks fly and the new pieces pop into place).
+const upgradeLook=new T.Group();visual.add(upgradeLook);const lookGroups={};
+const LM={chrome:mat('#d9dfe2',{metalness:.85,roughness:.22}),gold:mat('#f2c14e',{metalness:.7,roughness:.3,emissive:'#7a5410',emissiveIntensity:.25}),red:palette.red,dark:palette.dark,
+ wing:palette.gold,white:mat('#f4efe2'),tank:mat('#c94f3d',{metalness:.3,roughness:.45}),canvas:mat('#7d8a5c'),crate:mat('#b88a52'),strap:mat('#3b4a50'),rubber:mat('#1e2427'),blue:mat('#2f6f8c',{metalness:.3})};
+const LOOKS={
+ engine(g,L){const ring=mesh(new T.CylinderGeometry(.5+L*.02,.58+L*.02,.36+L*.03,16,1,true),L>=5?LM.gold:LM.red,g);ring.rotation.x=Math.PI/2;ring.position.z=-1.6;
+  if(L>=2)for(const s of [-1,1])for(let k=0;k<3+(L>=4?1:0);k++){const e=mesh(new T.CylinderGeometry(.05,.07,.42,8),LM.chrome,g);e.rotation.z=s*1.1;e.position.set(s*.6,.12-k*.12,-1.35+k*.2);}
+  if(L>=3)for(let k=0;k<9;k++){const a=k/9*Math.PI*2,c=box(g,.16,.2,.22,Math.cos(a)*.56,Math.sin(a)*.56,-1.72,LM.chrome);c.rotation.z=a;}
+  if(L>=4){const sp=mesh(new T.ConeGeometry(.22,.5,14),L>=5?LM.gold:LM.chrome,prop);sp.rotation.x=-Math.PI/2;sp.position.z=-.25;g.userData.extra=(g.userData.extra||[]).concat(sp);}
+  if(L>=5){const scoop=box(g,.32,.2,.7,0,.55,-1.3,LM.dark);scoop.rotation.x=-.12;}},
+ fuel(g,L){const belly=mesh(new T.CapsuleGeometry(.2+Math.min(L,3)*.04,.8+Math.min(L,3)*.18,4,10),LM.tank,g);belly.rotation.x=Math.PI/2;belly.position.set(0,-.8,-.1);
+  if(L>=3)for(const s of [-1,1]){const t=mesh(new T.CapsuleGeometry(.16+(L-3)*.04,.7+(L-3)*.2,4,10),LM.tank,g);t.rotation.x=Math.PI/2;t.position.set(s*2.2,-.72,-.15);box(g,.06,.22,.3,s*2.2,-.55,-.15,LM.dark);}
+  if(L>=5)for(const z of [-.45,.25]){const b=mesh(new T.TorusGeometry(.33,.04,6,16),LM.gold,g);b.position.set(0,-.8,z);}
+  if(L>=2){const cap=mesh(new T.CylinderGeometry(.08,.08,.1,8),LM.chrome,g);cap.position.set(0,.6,-.9);}},
+ cargo(g,L){box(g,.8+Math.min(L,3)*.06,.32,.8+L*.12,0,-.64,.95,LM.crate);
+  if(L>=2)box(g,.84+Math.min(L,3)*.06,.06,.84+L*.12,0,-.47,.95,LM.strap);
+  if(L>=3){box(g,.9,.05,1,0,.62,1.05,LM.dark);for(let k=0;k<L-2;k++)box(g,.42,.36,.42,(k%2?.22:-.22),.84,.75+Math.floor(k/2)*.45,LM.crate);}
+  if(L>=5)for(const s of [-1,1])box(g,.26,.45,.9,s*.62,-.15,.85,LM.canvas);},
+ wings(g,L){const ext=.25+L*.18;for(const s of [-1,1]){box(g,ext,.15,1.25,s*(3.9+ext/2),1,-.3,LM.wing);box(g,ext*.8,.13,1.12,s*(3.55+ext*.4),-.45,-.15,LM.wing);box(g,.12,.17,1.27,s*(3.9+ext),1,-.3,L>=5?LM.gold:LM.red);
+  if(L>=3){const w=box(g,.1,.5+(L-3)*.15,.8,s*(3.95+ext),1.25+(L-3)*.07,-.25,LM.wing);w.rotation.z=-s*.25;}
+  if(L>=4)box(g,3.4,.05,.12,s*2.2,1.08,-.98,LM.white);
+  if(L>=5)for(let k=0;k<4;k++)box(g,.3,.03,.3,s*(1.4+k*.6),1.09,-.15+(k%2)*.3,LM.dark);}},
+ ailerons(g,L){for(const s of [-1,1]){box(g,.9+L*.25,.08,.32,s*(2.9-L*.05),1,.42,LM.red);if(L>=2)box(g,.8+L*.2,.07,.28,s*(2.7-L*.05),-.45,.5,LM.red);
+  if(L>=5){const w=mesh(new T.IcosahedronGeometry(.09,0),LM.chrome,g);w.position.set(s*(3.4),1.02,.62);}}
+  if(L>=3){const f=box(g,.12,.55+(L-3)*.2,.7,0,1.25+(L-3)*.1,1.95,LM.red);f.rotation.x=-.25;}
+  if(L>=4){const v=box(g,.1,.45,.6,0,-.35,1.7,LM.red);v.rotation.x=.3;}},
+ chutes(g,L){const n=Math.min(2,Math.ceil(L/2));for(let k=0;k<n;k++){const c=mesh(new T.CylinderGeometry(.17+(L>=4?.04:0),.17+(L>=4?.04:0),.42,12),L>=5?LM.gold:LM.blue,g);c.position.set(n===1?0:(k?.2:-.2),.6,1.0);
+   const cap=mesh(new T.SphereGeometry(.17+(L>=4?.04:0),12,6,0,Math.PI*2,0,Math.PI/2),LM.white,g);cap.position.set(c.position.x,.81,1.0);}
+  if(L>=3){const d=box(g,.3,.2,.35,0,.35,2.25,LM.canvas);void d;}},
+ winch(g,L){const d=mesh(new T.CylinderGeometry(.2+L*.03,.2+L*.03,.45+L*.05,12),LM.dark,g);d.rotation.z=Math.PI/2;d.position.set(0,-.62,.45);
+  const coil=mesh(new T.TorusGeometry(.2+L*.03,.04,6,16),L>=2?LM.chrome:LM.dark,g);coil.rotation.y=Math.PI/2;coil.position.set(0,-.62,.45);
+  if(L>=3){const arm=box(g,.08,.08,.9,0,-.85,.85,LM.dark);arm.rotation.x=-.3;}
+  if(L>=4){const p=mesh(new T.TorusGeometry(.12,.04,6,12),LM.chrome,g);p.rotation.y=Math.PI/2;p.position.set(0,-1.0,1.25);}
+  if(L>=5){const h=mesh(new T.TorusGeometry(.16,.05,6,12,Math.PI*1.4),LM.gold,g);h.position.set(0,-1.2,1.25);}},
+ gear(g,L){for(const s of [-1,1]){const t=mesh(new T.TorusGeometry(.33+L*.025,.07+L*.012,8,18),LM.rubber,g);t.rotation.y=Math.PI/2;t.position.set(s*.65,-1,-.45);
+  if(L>=2){const sp=mesh(new T.CapsuleGeometry(.18,.5,4,10),LM.wing,g);sp.rotation.x=Math.PI/2;sp.position.set(s*.65,-.85,-.45);sp.scale.set(1,1.2,1);}
+  if(L>=3){const st=box(g,.07,.55,.07,s*.42,-.7,-.2,LM.chrome);st.rotation.z=s*.35;}
+  if(L>=5){const hub=mesh(new T.CylinderGeometry(.12,.12,.24,10),LM.gold,g);hub.rotation.z=Math.PI/2;hub.position.set(s*.65,-1,-.45);}}
+  if(L>=4){const tw=mesh(new T.CylinderGeometry(.14,.14,.08,10),LM.rubber,g);tw.rotation.z=Math.PI/2;tw.position.set(0,-.25,2.05);box(g,.05,.3,.05,0,-.1,1.95,LM.dark);}}
+};
+function buildPart(id){const old=lookGroups[id];if(old){for(const x of old.userData.extra||[])x.parent?.remove(x);upgradeLook.remove(old);}
+ const st=partState(career,id),g=new T.Group();lookGroups[id]=g;upgradeLook.add(g);if(st.level>0)LOOKS[id]?.(g,st.level);
+ g.traverse(o=>{if(o.isMesh)o.castShadow=true;});return g;}
+function planeLook(){for(const p of PARTS)buildPart(p.id);}
+// Workshop show when a part is bought: sparks at the part, then the new pieces pop into place.
+const fxSparks=[],sparkMat=mat('#fff2b0',{emissive:'#ffb52c',emissiveIntensity:1.5});let fxPart=null;
+function workshopFx(id,kind){audio.unlock();audio.sfx.workshop(kind);const g=buildPart(id);g.updateMatrixWorld(true);
+ const box3=new T.Box3().setFromObject(g),at=box3.isEmpty()?visual.getWorldPosition(new T.Vector3()):box3.getCenter(new T.Vector3());
+ fxPart={g,t:0,at,dur:kind==='unlock'?3:2.6,next:0};g.scale.setScalar(.01);}
+function updateWorkshop(dt){
+ if(fxPart){const f=fxPart;f.t+=dt;f.next-=dt;
+  if(f.next<=0&&f.t<f.dur-.4){f.next=.05+Math.random()*.08;for(let k=0;k<7;k++){const s=box(scene,.11,.11,.11,0,0,0,sparkMat);s.position.copy(f.at).add(new T.Vector3(Math.random()-.5,Math.random()-.5,Math.random()-.5).multiplyScalar(.8));fxSparks.push({mesh:s,v:new T.Vector3(Math.random()-.5,Math.random()*.8+.2,Math.random()-.5).multiplyScalar(5),life:.5+Math.random()*.4});}}
+  const u=Math.min(1,f.t/f.dur),pop=u<.7?u/.7*.85:.85+.15*Math.sin((u-.7)/.3*Math.PI*1.5)*(1-u)*3+.15*((u-.7)/.3);
+  f.g.scale.setScalar(Math.max(.01,Math.min(1.08,pop)));visual.position.y=Math.sin(f.t*38)*.012*(1-u);
+  if(f.t>=f.dur){f.g.scale.setScalar(1);visual.position.y=0;fxPart=null;}}
+ for(let i=fxSparks.length-1;i>=0;i--){const s=fxSparks[i];s.life-=dt;s.v.addScaledVector(state.normal,-9*dt);s.mesh.position.addScaledVector(s.v,dt);s.mesh.scale.setScalar(Math.max(.01,s.life*2));if(s.life<=0){scene.remove(s.mesh);s.mesh.geometry.dispose();fxSparks.splice(i,1);}}}
 planeLook();
 
 function frame(now){requestAnimationFrame(frame);const dt=Math.min((now-last)/1000,.04);last=now;let camHandled=false;
  if(mode==='cutscene')camHandled=updateCutscene(dt);
  else if(mode==='rollout')camHandled=updateRollout(dt);
- else if(mode==='hangar'||mode==='tow')camHandled=true;
+ else if(mode==='hangar'||mode==='tow'){camHandled=true;updateWorkshop(dt);}
  else if(mode==='touchdown')camHandled=updateTouchdown(dt);
  else if(mode==='landing')camHandled=updateLanding(dt);
  else if(mode==='crash')camHandled=updateCrash(dt);

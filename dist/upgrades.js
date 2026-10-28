@@ -1,6 +1,6 @@
 // Plane upgrades and pilot ranks (v0.74). Pure logic, no rendering.
-// Each part must first be unlocked (a one-time fee, and a minimum pilot rank), then it can be
-// upgraded through 5 levels. Every level improves the part only a little, and each level costs
+// Every part must first be unlocked (a one-time fee, and a minimum pilot rank; v0.76: the starter
+// parts have a small fee too), so each part is 6 purchases: the unlock, then 5 upgrade levels. Every level improves the part only a little, and each level costs
 // about twice the last, so a maxed part is a big investment for a ~20-25% gain.
 
 export const RANKS=[
@@ -16,11 +16,11 @@ export function nextRank(c){const r=rankOf(c);return r+1<RANKS.length?{...RANKS[
 export const MAX_LEVEL=5;
 // per: what one level changes (added to the base value of each stat). base: level-1 price.
 export const PARTS=[
- {id:'engine',name:'Engine',icon:'⚙',rank:0,unlock:0,base:1500,blurb:'More power: higher cruise speed and quicker acceleration.',
+ {id:'engine',name:'Engine',icon:'⚙',rank:0,unlock:600,base:1500,blurb:'More power: higher cruise speed and quicker acceleration.',
   per:{speed:.05,accel:.08},show:[['speed','Top speed',v=>`${Math.round(36*v*3)} kt`]]},
- {id:'fuel',name:'Fuel tank',icon:'⛽',rank:0,unlock:0,base:1200,blurb:'A bigger tank. Every level adds about 10% more flying time.',
+ {id:'fuel',name:'Fuel tank',icon:'⛽',rank:0,unlock:500,base:1200,blurb:'A bigger tank. Every level adds about 10% more flying time.',
   per:{tank:.1},show:[['tank','Flying time',v=>`${(6*v).toFixed(1)} min`]]},
- {id:'cargo',name:'Cargo hold',icon:'📦',rank:0,unlock:0,base:900,blurb:'One more spare parcel aboard per level, for when a drop goes wrong.',
+ {id:'cargo',name:'Cargo hold',icon:'📦',rank:0,unlock:400,base:900,blurb:'One more spare parcel aboard per level, for when a drop goes wrong.',
   per:{spares:1},show:[['spares','Spare parcels',v=>`+${v}`]]},
  {id:'wings',name:'Wings',icon:'🪽',rank:1,unlock:3000,base:1800,blurb:'More lift: faster climbs, a higher ceiling, and you can fly slower before sinking.',
   per:{climb:.06,ceiling:4,slow:-.6},show:[['climb','Climb rate',v=>`${Math.round(v*100)}%`],['slow','Sinks below',v=>`${Math.round(v*3)} kt`]]},

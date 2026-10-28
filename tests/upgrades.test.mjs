@@ -22,3 +22,5 @@ test('parachute upgrades open sooner and let cargo survive lower drops',()=>{con
 test('landing gear upgrades survive harder touchdowns',()=>{const c=career();c.parts.gear={unlocked:true,level:5};const s=stats(c);const hard={sink:3.2,speed:14,bank:0,x:0,along:1};
  assert.equal(gradeTouchdown(hard).ok,false);assert.equal(gradeTouchdown(hard,{sink:s.sink,landSpeed:s.landSpeed}).ok,true);});
 test('wing upgrades let the plane fly slower before it starts to sink',()=>{const c=career();c.parts.wings={unlocked:true,level:5};const f=newFlight();f.pitch=0;f.speed=14;const stock=-verticalSpeed(f);f.perf=stats(c);assert.ok(-verticalSpeed(f)<stock);});
+test('every part, starter parts included, needs its unlock fee before the first upgrade',()=>{const c=career({cash:100000});for(const p of PARTS){assert.ok(p.unlock>0,p.id);}
+ assert.equal(nextAction(c,'engine').kind,'unlock');assert.ok(buy(c,'engine'));assert.equal(c.parts.engine.level,0);assert.equal(nextAction(c,'engine').kind,'upgrade');});

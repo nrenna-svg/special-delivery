@@ -61,7 +61,12 @@ export function createAirfield({T,scene,mat,palette,signText='KESTREL COURIER CO
 
  // Camera spots (hangar-local): looking at the parked plane from by the doors, and outside on the apron.
  const P={x:PARK.x-HANGAR.x,z:PARK.z-HANGAR.z};
- function hangarView(pos,look){H.updateMatrixWorld(true);pos.set(-5.6,2.5,5.8);look.set(P.x+.6,1.5,P.z-1.6);H.localToWorld(pos);H.localToWorld(look);}
+ // board: 'right' (wide screens: the job board covers the right side, so frame the plane on the left),
+ // 'bottom' (phones: the board covers the bottom), or null (no board, e.g. during the rollout).
+ function hangarView(pos,look,board=null){H.updateMatrixWorld(true);pos.set(-5.4,2.9,6.9);look.set(P.x,1.3,P.z);
+  const fwd=look.clone().sub(pos).normalize(),right=new T.Vector3().crossVectors(fwd,new T.Vector3(0,1,0)).normalize();
+  if(board==='right')look.addScaledVector(right,4.3);else if(board==='bottom')look.y-=2.4;
+  H.localToWorld(pos);H.localToWorld(look);}
  function apronView(pos){H.updateMatrixWorld(true);pos.set(-13.5,3.6,9.5);H.localToWorld(pos);}
  const obstacle={normal:runwayNormal(HANGAR.x,HANGAR.z,new T.Vector3()),top:RUNWAY_HEIGHT+R+.6,radius:L/2+2,name:'the hangar'};
  function update(time){const pulse=.5+.5*Math.sin(time*5);approach.forEach((a,k)=>{a.material=m.edge;a.scale.setScalar(.7+.6*Math.max(0,Math.sin(time*6-k*.9)));});}
