@@ -5,7 +5,7 @@ import {predictDrop} from '../dist/delivery.js';
 import {gradeTouchdown} from '../dist/airfield.js';
 const career=(o={})=>({cash:0,jobsDone:0,earned:0,parts:newParts(),...o});
 
-test('eight parts, each with five levels whose price roughly doubles',()=>{assert.equal(PARTS.length,8);for(const p of PARTS){let prev=0;for(let l=1;l<=MAX_LEVEL;l++){const c=levelCost(p,l);assert.ok(c>prev*1.8);prev=c;}}});
+test('nine parts, each with five levels whose price roughly doubles',()=>{assert.equal(PARTS.length,9);for(const p of PARTS){let prev=0;for(let l=1;l<=MAX_LEVEL;l++){const c=levelCost(p,l);assert.ok(c>prev*1.8);prev=c;}}});
 test('ranks rise with jobs done AND money earned',()=>{assert.equal(rankOf({jobsDone:0,earned:0}),0);assert.equal(rankOf({jobsDone:3,earned:2500}),1);assert.equal(rankOf({jobsDone:30,earned:2500}),1);assert.equal(rankOf({jobsDone:60,earned:999999}),RANKS.length-1);});
 test('locked parts need the rank, then the unlock fee, then level prices',()=>{const c=career({cash:100000});
  assert.equal(nextAction(c,'wings').kind,'rank');assert.equal(buy(c,'wings'),false);

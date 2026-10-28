@@ -1,5 +1,14 @@
 # Special Delivery changelog
 
+## v0.80 — Very hard jobs: multi-island routes, missiles, flak; unlockable hook and flares
+
+- Hard jobs now span islands: ROUGH 2, DEADLY 3 (career.js `makeJob`: `islands`, stops/masts/medicine spread across them, crates carried to the next island). Pay +35% per extra island.
+- New threats.js: SAM sites (radar, lock-on, homing missiles with lead pursuit, motor burn, seeker limit), flak guns, flares, explosions and smoke. Counters: fly under the radar floor, barrel roll/loop in the dodge window, flares. Missile hit = crash under the job's tier rules. Warning tones and a red screen pulse; HUD line shows lock %, missile distance and when to roll.
+- Shop: new **Flare dispenser** part (9 parts now). **Winch & hook** is now a Rookie part that must be unlocked before hook jobs; upgrades add lifting strength (crate weights LIGHT→MASSIVE), winch speed, line length and reach. Hook jobs you can't do yet show a padlock and can't be taken. Too-heavy crates can't be lifted. Carrying a crate slows the plane.
+- Visible flare dispensers on the plane; audio: radar ping, lock beeps, missile warning, launch, explosions, flak, flare pops.
+- Board slips show the number of islands and air defences; the job details list them with survival tips.
+- New tests: tests/threats.test.mjs (82 total).
+
 ## v0.78 — DEV test tools
 
 - Hangar **DEV** button (bottom-left, purple) with play-testing tools: +$10k / +$100k / +$1M, unlimited cash toggle, rank up, max rank, max all parts, reset parts, unlock all worlds, new job board, reset career (two clicks within 5 s). Hidden outside the hangar.

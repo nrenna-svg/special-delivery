@@ -257,3 +257,14 @@ body:not(.inhangar) #devbtn,body:not(.inhangar) #devpanel{display:none}
 .devgrid button.on{background:#1d5b3a}
 .devgrid button.danger{grid-column:1/3;background:#7a2320}
 #devpanel small{opacity:.6}
+
+/* v0.80 air defences */
+.job .sam{font-size:10px;font-weight:800;letter-spacing:1px;color:#b0262a;background:#ffd9d4;border-radius:3px;padding:1px 5px}
+.job .need{font-size:10px;font-weight:800;letter-spacing:.6px;color:#5b4a2e;background:#e9dcbd;border-radius:3px;padding:1px 5px}
+.job.needs{opacity:.72}
+#takejob:disabled{background:#9c8b6f;color:#f6efdc;box-shadow:none;cursor:not-allowed}
+#vignette{transition:box-shadow .2s}
+body.missile #vignette{box-shadow:inset 0 0 160px 40px #ff2a2a88;animation:missilePulse .35s ease-in-out infinite alternate}
+@keyframes missilePulse{from{opacity:.55}to{opacity:1}}
+.job .meta{flex-wrap:wrap}
+.tabpane{overflow:auto;padding-bottom:4px}

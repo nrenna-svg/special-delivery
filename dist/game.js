@@ -19,8 +19,10 @@ import {CELEBRATION_TIME} from './celebrate.js';
 import {GATE_Z,GATE_ALT,GATE_RADIUS,BOUNCE_TIME,toRunway,runwayNormal,gateCrossing,gradeLanding,landingPath} from './landing.js';
 import {PHASES,ROLLOUT_TIME,rolloutPose,applyRunwayPose,runwayForward,airfieldClear,onRunway,gradeTouchdown,BRAKE,RUNWAY_HALF,MAX_SINK} from './airfield.js';
 import {createAirfield} from './hangar.js';
+import {createThreats,RADAR_FLOOR,FLAK_DAMAGE,DODGE_NEAR,DODGE_FAR} from './threats.js';
 import {PARTS,PART,RANKS,MAX_LEVEL,rankOf,nextRank,nextAction,buy,stats,statAfter,partState,newParts,levelCost} from './upgrades.js';
 import {WORLDS,WORLD_ORDER,WORLD,setWorld} from './worlds.js';
+import {CRATE_WEIGHTS} from './career.js';
 import {TIERS,JOB_TYPES,jobBoard,jobRoute,objectivePay,settle,loadCareer,saveCareer,newCareer,loadBestCareer,saveBestCareer,money,allSiteNormals} from './career.js';
 // v0.70: the game is now a career flown from the hangar. Endless Run and Training Days are hidden
 // (their code is kept; set LEGACY_MODES to true to bring the old menus back).
@@ -120,7 +122,7 @@ function label(text){const c=document.createElement('canvas');c.width=128;c.heig
 function buildPads(){for(const d of destinations){scene.remove(d.g);d.g.traverse(o=>{o.geometry?.dispose();if(o.material){o.material.map?.dispose();o.material.dispose();}});}destinations.length=0;
  for(const stop of route.stops){const g=place(stop.normal,stop.motion?2.6:groundHeight(stop.normal)+.6);const color=mat(stop.color,{emissive:stop.color,emissiveIntensity:.25});const ring=mesh(new T.TorusGeometry(7.7,.22,6,48),color,g);ring.rotation.x=-Math.PI/2;const pad=mesh(new T.CircleGeometry(7.5,32),mat(stop.color,{transparent:true,opacity:.25,side:T.DoubleSide}),g);pad.rotation.x=-Math.PI/2;const sign=label(String(stop.id+1));sign.position.y=5;g.add(sign);box(g,.15,6,.15,0,3,0,palette.white);box(g,2,1.3,.1,1,5,0,color);destinations.push({g,ring,sign,color});}}
 buildPads();
-const extras=createExtras({T,scene,mat,palette,label,hemi,sun,aircraft});let shake=0;
+const extras=createExtras({T,scene,mat,palette,label,hemi,sun,aircraft});const threats=createThreats({T,scene,mat,label,ground:groundHeight});let lockBeep=0;let shake=0;
 // Visual upgrade and life on the water. Details stay off the runway, apron, lighthouse and every pad.
 const keepClear=n=>nearPad(n)||airfieldClear(n,5)||n.dot(LIGHTHOUSE.normal)>Math.cos(5/RADIUS);
 const seaLife=createSeaLife({T,scene,mat,palette,label});
@@ -217,7 +219,7 @@ function checkDaylight(){
 // Forgiving rules: running dry means a glide, and a crash costs a parcel, cargo condition and 15 s,
 // then the plane is put back in the air at a safe spot from a few seconds earlier.
 const crumbs=[];let crumbTick=0,crash=null,lowFuelStage=0,warnOn=false,warnBeep=0;
-function obstacles(){return [LIGHTHOUSE,field.obstacle,...extras.obstacles(),...seaLife.obstacles(worldTime)];}
+function obstacles(){return [LIGHTHOUSE,field.obstacle,...threats.obstacles(),...extras.obstacles(),...seaLife.obstacles(worldTime)];}
 function updateFuelAndTerrain(dt){
  state.fuel=Math.max(0,state.fuel-fuelBurn(state.throttle,!!keys.boost&&state.fuel>0,perf)*dt);
  if(state.fuel<25&&lowFuelStage<1){lowFuelStage=1;audio.sfx.lowfuel();const h=extras.nearestFuel(state.normal);notify(`LOW FUEL · ${h?'FLY THROUGH A GREEN F HOOP OR ':''}HEAD FOR THE BLUE DEPOT AT HOME`);noticeUntil=performance.now()+5000;}
@@ -259,7 +261,8 @@ function updateCrash(dt){
 function handleChallenge(e){const quick=ms=>{noticeUntil=performance.now()+ms;};
  if(e.type==='ring'){audio.sfx.ring(e.streak);notify(`SKY RING +${e.points}${e.streak>1?` · STREAK ×${Math.min(4,e.streak)}`:''}`);quick(1400);}
  else if(e.type==='bird'){audio.sfx.squawk();shake=.5;notify('BIRD STRIKE · CARGO CONDITION −12%');}
- else if(e.type==='crate'){audio.sfx.snag();notify(`${e.goods.toUpperCase()} ON THE HOOK · KEEP THE LINE OUT · SPACE DROPS IT ON THE PAD`);noticeUntil=performance.now()+6000;}
+ else if(e.type==='tooheavy'){audio.sfx.missed();notify(`TOO HEAVY · THIS ${CRATE_WEIGHTS[e.weight]} CRATE NEEDS A STRONGER WINCH`);noticeUntil=performance.now()+3000;}
+  else if(e.type==='crate'){audio.sfx.snag();notify(`${e.goods.toUpperCase()} ON THE HOOK · KEEP THE LINE OUT · SPACE DROPS IT ON THE PAD`);noticeUntil=performance.now()+6000;}
   else if(e.type==='mail'&&job){audio.sfx.snag();const pay=objectivePay(job,{});route.earned+=pay;route.done++;notify(e.left?`MAILBAG SNAGGED +${money(pay)} · ${e.left} TO GO`:`ALL MAILBAGS ABOARD +${money(pay)}`);}
   else if(e.type==='mail'){audio.sfx.snag();route.score+=100;if(e.left){notify(`MAILBAG SNAGGED +100 · ${e.left} TO GO`);}else if(route.complete){if(runMode)queueNextDay();else startHomeward();}else notify('ALL MAILBAGS ABOARD +100');}
  else if(e.type==='thunder')audio.sfx.thunder(e.dist);
@@ -270,7 +273,7 @@ function handleChallenge(e){const quick=ms=>{noticeUntil=performance.now()+ms;};
 }
 function clearNotice(){$('notice').textContent='';$('notice').classList.remove('lost');}
 function notify(text){$('notice').classList.remove('lost');$('notice').textContent=text;noticeUntil=performance.now()+4000;}
-function reset(){lineLen=lineTarget=0;crumbs.length=0;crash=null;lowFuelStage=0;warnOn=false;document.body.classList.remove('pullup');clearNotice();aim.visible=false;celebrations.clear();$('stamp').hidden=true;stopPip();landing=null;gateGroup.visible=false;noticeUntil=0;pendingDrop=null;for(const f of fragments){scene.remove(f.mesh);f.mesh.geometry.dispose();}fragments.length=0;for(const p of packages)disposeParcel(p);packages=[];const plan=careerPlan();run.warned=0;route=newRoute(plan.stops);route.crashes=0;route.earned=0;route.done=0;route.jobDone=false;buildPads();extras.start(plan.features,route,destinations);seaLife.setDay(plan.features);$('approach').hidden=true;graphics.shadowify(scene);hook.visible=false;dropCooldown=0;deliveryElapsed=0;state=newFlight();state.perf=perf;state.normal.set(0,1,.18).normalize();state.forward.set(0,.18,-1).normalize();state.throttle=8/26;state.speed=18;$('throttle').value=31;tripAngle=0;previousLongitude=0;lapArmed=false;laps=0;keys={};trails.forEach(t=>t.visible=false);$('laptext').textContent='Fly straight. Find your way home.';camera.position.copy(state.normal).multiplyScalar(RADIUS+26).addScaledVector(state.forward,-17);}
+function reset(){lineLen=lineTarget=0;crumbs.length=0;crash=null;lowFuelStage=0;warnOn=false;document.body.classList.remove('pullup');clearNotice();aim.visible=false;celebrations.clear();$('stamp').hidden=true;stopPip();landing=null;gateGroup.visible=false;noticeUntil=0;pendingDrop=null;for(const f of fragments){scene.remove(f.mesh);f.mesh.geometry.dispose();}fragments.length=0;for(const p of packages)disposeParcel(p);packages=[];const plan=careerPlan();plan.features.flares=partState(career,'flares').unlocked?perf.flares:0;run.warned=0;route=newRoute(plan.stops);route.crashes=0;route.earned=0;route.done=0;route.jobDone=false;buildPads();extras.start(plan.features,route,destinations);threats.start(plan.features);seaLife.setDay(plan.features);$('approach').hidden=true;graphics.shadowify(scene);hook.visible=false;dropCooldown=0;deliveryElapsed=0;state=newFlight();state.perf=perf;state.normal.set(0,1,.18).normalize();state.forward.set(0,.18,-1).normalize();state.throttle=8/26;state.speed=18;$('throttle').value=31;tripAngle=0;previousLongitude=0;lapArmed=false;laps=0;keys={};trails.forEach(t=>t.visible=false);$('laptext').textContent='Fly straight. Find your way home.';camera.position.copy(state.normal).multiplyScalar(RADIUS+26).addScaledVector(state.forward,-17);}
 // ── Missions start with a cutscene: crew loads the plane, camera pulls back, takeoff roll, climb-out.
 let pausedFrom='flight';const cine={t:0,swoop:false};
 // Day picker on the title and route-complete cards. Locked days unlock as each day is finished.
@@ -305,7 +308,7 @@ document.documentElement.addEventListener('mouseleave',releaseMouse);
 // Mouse wheel winch: scroll down to pay out a hook line under the plane, up to reel it in.
 // The hook snags mailbags on Day 4; it can never hang lower than just above the ground.
 const LINE_MAX=14,LINE_STEP=1.4;let lineLen=0,lineTarget=0,winchTick=0;
-window.addEventListener('wheel',e=>{if(!(mode==='flight'||mode==='landing')||e.target.closest?.('.overlay,#days'))return;e.preventDefault();
+window.addEventListener('wheel',e=>{if(!(mode==='flight'||mode==='landing')||e.target.closest?.('.overlay,#days'))return;e.preventDefault();if(!winchOK()){if(performance.now()>noticeUntil-2500){notify('NO HOOK FITTED · UNLOCK THE WINCH & HOOK IN THE PLANE SHOP');}return;}
  const notches=Math.max(-3,Math.min(3,e.deltaY/(e.deltaMode===1?3:100)));lineTarget=Math.max(0,Math.min(perf.line,lineTarget+notches*LINE_STEP));},{passive:false});
 const lineMesh=new T.Mesh(new T.CylinderGeometry(.05,.05,1,5),palette.dark);lineMesh.visible=false;scene.add(lineMesh);
 const hookEnd=new T.Group();hookEnd.visible=false;scene.add(hookEnd);{const h=mesh(new T.TorusGeometry(.42,.1,6,14,Math.PI*1.35),palette.metal,hookEnd);h.rotation.set(0,Math.PI/2,Math.PI*.8);sphere(hookEnd,.22,0,.45,0,palette.red,0);}
@@ -322,13 +325,13 @@ function updateLine(dt,position){
  lineMesh.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),lineDir.normalize());hookEnd.position.copy(hookWorld);hookEnd.quaternion.copy(aircraft.quaternion);
  return hookWorld;
 }
-window.addEventListener('keydown',e=>{if(e.target instanceof HTMLInputElement)return;if(bindings[e.key]){e.preventDefault();keys[bindings[e.key]]=true;}if(e.code==='Space'){e.preventDefault();if(!e.repeat){if(mode==='cutscene')skipCutscene();else if(mode==='rollout')endRollout();else if(mode==='hangar'&&!$('board').hidden&&hangarTab==='jobs')takeJob();else drop();}}if(e.repeat)return;if(e.key==='Enter'&&mode==='cutscene'){e.preventDefault();skipCutscene();}if(e.key.toLowerCase()==='q')stunt('roll',-1);if(e.key.toLowerCase()==='e')stunt('roll',1);if(e.key.toLowerCase()==='l'||e.key.toLowerCase()==='f')stunt('loop');if(e.key==='p'||e.key==='P')pause();if(e.key==='h'||e.key==='H')document.body.classList.toggle('fullhud');if((e.key==='r'||e.key==='R')&&mode!=='intro'&&!job)restartFlight();if(e.key==='Escape'){if(mode==='cutscene')skipCutscene();else if(mode==='flight')pause();}});
+window.addEventListener('keydown',e=>{if(e.target instanceof HTMLInputElement)return;if(bindings[e.key]){e.preventDefault();keys[bindings[e.key]]=true;}if(e.code==='Space'){e.preventDefault();if(!e.repeat){if(mode==='cutscene')skipCutscene();else if(mode==='rollout')endRollout();else if(mode==='hangar'&&!$('board').hidden&&hangarTab==='jobs')takeJob();else drop();}}if(e.repeat)return;if(e.key==='Enter'&&mode==='cutscene'){e.preventDefault();skipCutscene();}if(e.key.toLowerCase()==='q')stunt('roll',-1);if(e.key.toLowerCase()==='e')stunt('roll',1);if(e.key.toLowerCase()==='l'||e.key.toLowerCase()==='f')stunt('loop');if(e.key==='p'||e.key==='P')pause();if((e.key==='c'||e.key==='C')&&mode==='flight')dropFlares();if(e.key==='h'||e.key==='H')document.body.classList.toggle('fullhud');if((e.key==='r'||e.key==='R')&&mode!=='intro'&&!job)restartFlight();if(e.key==='Escape'){if(mode==='cutscene')skipCutscene();else if(mode==='flight')pause();}});
 window.addEventListener('keyup',e=>{if(bindings[e.key])keys[bindings[e.key]]=false;});
 window.addEventListener('blur',()=>{keys={};if(mode==='flight'||mode==='cutscene'||mode==='landing'||mode==='crash'||mode==='rollout'||mode==='touchdown')pause();});document.addEventListener('visibilitychange',()=>{if(document.hidden&&(mode==='flight'||mode==='cutscene'||mode==='landing'))pause();});
 document.querySelectorAll('[data-control]').forEach(b=>{b.onpointerdown=e=>{e.preventDefault();b.setPointerCapture(e.pointerId);keys[b.dataset.control]=true;};b.onpointerup=b.onpointercancel=b.onlostpointercapture=()=>keys[b.dataset.control]=false;});
 function resize(){renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();}window.addEventListener('resize',resize);resize();reset();
 const right=new T.Vector3(),up=new T.Vector3(),back=new T.Vector3(),basis=new T.Matrix4(),target=new T.Vector3(),camTarget=new T.Vector3();
-function stunt(type,direction=1){if(mode!=='flight')return;if(pendingDrop){notify('Cargo release in progress.');return;}const error=startStunt(state,type,direction);if(!error)audio.sfx.whoosh();notify(error||(type==='loop'?'LOOP · HOLD ON TO YOUR PARCELS':'BARREL ROLL'));}
+function stunt(type,direction=1){if(mode!=='flight')return;if(pendingDrop){notify('Cargo release in progress.');return;}const error=startStunt(state,type,direction);if(!error){const dodged=threats.dodge(aircraft.position.clone());if(dodged){audio.sfx.whoosh();notify(`DODGED! THE MISSILE${dodged>1?'S':''} LOST YOU`);noticeUntil=performance.now()+2200;}}if(!error)audio.sfx.whoosh();notify(error||(type==='loop'?'LOOP · HOLD ON TO YOUR PARCELS':'BARREL ROLL'));}
 function disposeParcel(p){scene.remove(p.mesh);p.mesh.traverse(o=>{if(o.geometry)o.geometry.dispose();});}
 function parcelModel(){const g=new T.Group();box(g,.85,.85,.85,0,0,0,palette.trunk);box(g,.16,.88,.88,0,0,0,palette.white);const canopy=new T.Group();g.add(canopy);for(let i=0;i<8;i++){const m=mesh(new T.SphereGeometry(2,4,5,i*Math.PI/4,Math.PI/4,0,Math.PI/2),i%2?palette.white:palette.red,canopy);m.position.y=3;}
  for(let i=0;i<8;i++){const angle=i*Math.PI/4;const geo=new T.BufferGeometry().setFromPoints([new T.Vector3(Math.cos(angle)*1.95,3,Math.sin(angle)*1.95),new T.Vector3(0,.35,0)]);canopy.add(new T.Line(geo,cordMaterial));}canopy.visible=false;scene.add(g);return {mesh:g,canopy};}
@@ -354,7 +357,7 @@ function updateDelivery(dt){
   let next=null,nav=null;if(job)next=careerNext();else{const remaining=route.stops.filter(s=>!s.done);next=remaining.sort((a,b)=>state.normal.distanceTo(a.normal)-state.normal.distanceTo(b.normal))[0];nav=extras.navTarget(state);if(nav)next=nav;else if(route.complete&&runMode){$('nextstop').textContent='DAY COMPLETE · NEW MANIFEST AT DAWN';$('bearing').textContent='';return;}else if(route.complete)next={name:'Kestrel Field · fly through the gold gate to land',normal:gateNormal};}if(!next)return;$('routehint').textContent=next.motion?'Moving boat: drop when the gold ring sits on the green DROP HERE ring ahead of it':'Space: release · 1s free fall · parachute opens';
   if(depot.visible&&route.parcels===0&&!route.complete&&!nav?.urgent){next={name:'Blue depot · refill',normal:depot.position.clone().normalize()};}
   if(next){const toward=next.normal.clone().addScaledVector(state.normal,-next.normal.dot(state.normal)).normalize();const side=new T.Vector3().crossVectors(state.forward,state.normal);const angle=Math.atan2(toward.dot(side),toward.dot(state.forward))*180/Math.PI;const distance=Math.acos(Math.max(-1,Math.min(1,state.normal.dot(next.normal))))*RADIUS;$('nextstop').textContent=next.goods?`${next.name} · ${next.goods}`:next.name;{const d=document.querySelector('.dispatch');d.classList.toggle('far',distance>40&&!pendingDrop);d.classList.toggle('boat',!!next.motion);}$('bearing').textContent=(Math.abs(angle)<12?'AHEAD':(angle>0?'RIGHT ':'LEFT ')+Math.round(Math.abs(angle))+'°')+' · '+Math.round(distance*10)+'m';}
-  {let st=extras.status(state);if(extras.hasMail)st+=` · HOOK LINE ${Math.round(lineLen*10)}m`;$('challenge').innerHTML=st;$('challenge').hidden=!st;}$('cargo').textContent=job?`${extras.carrying?'CRATE ON HOOK':job.type==='crate'||job.type==='mail'?'HOOK JOB':route.parcels+' PARCELS'} · CONDITION ${Math.round(route.condition)}% · EARNED ${money(route.earned)}`:`${route.parcels} PARCELS · CONDITION ${Math.round(route.condition)}% · SCORE ${route.score}`;$('laptext').textContent=job?`${job.typeLabel} · ${TIERS[job.tier].name} · PAYS ${money(job.pay)}`:runMode?`DAY ${run.day} · ${clockText(route.elapsed,run.plan.dayLength)} · ${fmtTime(run.plan.dayLength-route.elapsed)} OF DAYLIGHT`:`${Math.round(route.elapsed)}s · ${route.drops} drops`;
+  {let st=extras.status(state);const ts=threats.status;if(ts.inbound)st=`<em class="hot">MISSILE INBOUND${ts.inbound>1?' ×'+ts.inbound:''} · ${Math.round(ts.nearest*10)}m · ${ts.nearest<=DODGE_FAR&&ts.nearest>=DODGE_NEAR?'ROLL NOW (Q/E)!':`ROLL (Q/E) AT ${DODGE_FAR*10}m`}${threats.flares?' OR C FOR FLARES':''}</em>`+(st?' · '+st:'');else if(ts.locking>0)st=`<em class="hot">RADAR LOCK ${Math.round(ts.locking*100)}% · DIVE BELOW ${RADAR_FLOOR*10}m</em>`+(st?' · '+st:'');if(threats.armed)st+=partState(career,'flares').unlocked?` · FLARES ${threats.flares} (C)`:' · NO FLARES';if(extras.hasMail)st+=` · HOOK LINE ${Math.round(lineLen*10)}m`;$('challenge').innerHTML=st;$('challenge').hidden=!st;}$('cargo').textContent=job?`${extras.carrying?'CRATE ON HOOK':job.type==='crate'||job.type==='mail'?'HOOK JOB':route.parcels+' PARCELS'} · CONDITION ${Math.round(route.condition)}% · EARNED ${money(route.earned)}`:`${route.parcels} PARCELS · CONDITION ${Math.round(route.condition)}% · SCORE ${route.score}`;$('laptext').textContent=job?`${job.typeLabel} · ${TIERS[job.tier].name} · PAYS ${money(job.pay)}`:runMode?`DAY ${run.day} · ${clockText(route.elapsed,run.plan.dayLength)} · ${fmtTime(run.plan.dayLength-route.elapsed)} OF DAYLIGHT`:`${Math.round(route.elapsed)}s · ${route.drops} drops`;
  }
 }
 let mapWorld=false,mapTick=0;const mapCanvas=$('missionmap');$('mapmode').onclick=()=>{mapWorld=!mapWorld;$('mapmode').textContent=mapWorld?'WORLD':'ROUTE';$('mapmode').setAttribute('aria-pressed',String(mapWorld));};
@@ -396,10 +399,10 @@ function careerHud(){devRefill();rankHud();$('cash').textContent=money(career.ca
 function renderBoard(){board=jobBoard(career.boardSeed);selectedJob=Math.max(0,Math.min(selectedJob,board.length-1));const list=$('jobs');list.innerHTML='';
  board.forEach((j,i)=>{const t=TIERS[j.tier],b=document.createElement('button');b.className='job'+(i===selectedJob?' selected':'');b.setAttribute('role','option');b.setAttribute('aria-selected',String(i===selectedJob));
   b.style.setProperty('--tilt',`${((i*37)%5-2)*.45}deg`);b.style.setProperty('--tc',t.color);
-  b.innerHTML=`<span class="type">${JOB_TYPES[j.type].icon} ${j.typeLabel}</span><span class="where">${titleCase(j.island)}</span><span class="pay">${money(j.pay)}</span><span class="meta"><span class="tier">${t.name}</span>${j.title} · ${(j.dist/100).toFixed(1)} km</span>`;
+  const need=jobNeeds(j);b.innerHTML=`<span class="type">${JOB_TYPES[j.type].icon} ${j.typeLabel}${j.islands.length>1?` · ${j.islands.length} ISLANDS`:''}</span><span class="where">${titleCase(j.island)}</span><span class="pay">${money(j.pay)}</span><span class="meta"><span class="tier">${t.name}</span>${j.sams.length?`<span class="sam">⚠ ${j.sams.length} SAM${j.flak.length?` + ${j.flak.length} FLAK`:''}</span>`:''}${need?`<span class="need">🔒 ${need}</span>`:''}${j.title} · ${(j.dist/100).toFixed(1)} km</span>`;if(need)b.classList.add('needs');
   b.onclick=()=>{selectedJob=i;renderBoard();};b.ondblclick=()=>{selectedJob=i;takeJob();};list.appendChild(b);});
  const j=board[selectedJob],t=TIERS[j.tier];$('jobinfo').style.setProperty('--tc',t.color);
- $('jobinfo').innerHTML=`<b>${j.typeLabel} · ${j.island}</b><br>${j.how}<br><span class="risk">${t.name}: ${t.risk}</span>`;}
+ const need=jobNeeds(j);$('jobinfo').innerHTML=`<b>${j.typeLabel} · ${j.islands.map(titleCase).join(' → ')}</b><br>${j.how}${j.sams.length?`<br><b>AIR DEFENCES:</b> ${j.sams.length} missile site${j.sams.length>1?'s':''}${j.flak.length?` and ${j.flak.length} flak gun${j.flak.length>1?'s':''}`:''}. Fly below ${RADAR_FLOOR*10} m to hide from radar, barrel roll (Q/E) when a missile is ${DODGE_FAR*10} m out${partState(career,'flares').unlocked?`, or press C for flares (${perf.flares} per flight)`:' (a flare dispenser from the Plane Shop helps a lot)'}. A missile hit is a crash.`:''}<br><span class="risk">${t.name}: ${t.risk}</span>${need?`<br><span class="risk" style="--tc:#ff8a7a">🔒 ${need}: buy it in the Plane Shop.</span>`:''}`;$('takejob').disabled=!!need;}
 function showLedger(d){$('board').hidden=true;$('ledger').hidden=false;$('ledgertitle').textContent=d.title;$('ledgerhead').textContent=d.head;
  $('ledgerlines').innerHTML=d.lines.map(l=>`<div><span>${l.label}</span><b class="${l.amount<0?'neg':'pos'}">${money(l.amount)}</b></div>`).join('')+`<div class="total"><span>${d.totalLabel}</span><span>${money(d.total)}</span></div>`+(d.note?`<p>${d.note}</p>`:'');
  $('ledgerok').innerHTML=d.over?'START A NEW CAREER <span>↗</span>':'BACK TO THE BOARD <span>↗</span>';
@@ -409,7 +412,7 @@ function enterHangar(ledger=null){job=null;reset();mode='hangar';releaseMouse();
  $('overlay').hidden=true;$('hangarui').hidden=false;applyRunwayPose(state,rolloutPose(0));state.speed=0;state.fuel=100;field.setDoors(0);gateGroup.visible=false;aim.visible=false;
  visual.rotation.set(0,0,0);field.hangarView(fieldPos,fieldLook,innerWidth>760?'right':'bottom');camera.position.copy(fieldPos);camera.up.copy(state.normal);camera.lookAt(fieldLook);camera.fov=62;camera.updateProjectionMatrix();
  depot.visible=LEGACY_MODES;{const b=document.querySelector('.hgbar .brand div');b.firstChild.nodeValue=IN_DESERT?'DUSTWATER COURIER CO.':'KESTREL COURIER CO.';b.querySelector('small').textContent=`HANGAR · ${HERE.name.toUpperCase()}`;$('boardsub').textContent=IN_DESERT?'Pick a job. Higher, harsher mesas pay more.':'Pick a job. Harder islands pay more.';}careerHud();if(ledger)showLedger(ledger);else{$('ledger').hidden=true;$('board').hidden=false;renderBoard();setTab(hangarTab);}}
-function takeJob(){if(mode!=='hangar'||!board[selectedJob])return;audio.unlock();job=board[selectedJob];reset();route.parcels=job.parcels+perf.spares;
+function takeJob(){if(mode!=='hangar'||!board[selectedJob]||jobNeeds(board[selectedJob]))return;audio.unlock();job=board[selectedJob];reset();route.parcels=job.parcels+perf.spares;
  $('hangarui').hidden=true;document.body.classList.remove('inhangar');applyRunwayPose(state,rolloutPose(0));state.fuel=100;state.throttle=8/26;$('throttle').value=31;lowFuelStage=0;
  roll.t=0;mode='rollout';$('nextstop').textContent=`${job.typeLabel} · ${titleCase(job.island)}`;$('bearing').textContent='';$('cargo').textContent=`PAYS ${money(job.pay)} · ${TIERS[job.tier].name}`;showPlaying();notify(`${job.typeLabel} · ${job.island} · ${money(job.pay)} · ${TIERS[job.tier].name}${job.tier===3?' · A CRASH OUT THERE ENDS YOUR CAREER':''} · SPACE TO SKIP`);noticeUntil=performance.now()+6500;}
 $('takejob').onclick=takeJob;$('reset').innerHTML='↺ CALL OFF FLIGHT';
@@ -537,6 +540,8 @@ const LOOKS={
   if(L>=3){const arm=box(g,.08,.08,.9,0,-.85,.85,LM.dark);arm.rotation.x=-.3;}
   if(L>=4){const p=mesh(new T.TorusGeometry(.12,.04,6,12),LM.chrome,g);p.rotation.y=Math.PI/2;p.position.set(0,-1.0,1.25);}
   if(L>=5){const h=mesh(new T.TorusGeometry(.16,.05,6,12,Math.PI*1.4),LM.gold,g);h.position.set(0,-1.2,1.25);}},
+ flares(g,L){for(const sx of [-1,1]){const pod=box(g,.22,.3,.5+L*.08,sx*.6,-.25,.65,L>=5?LM.gold:LM.dark);void pod;for(let k=0;k<Math.min(3,1+Math.floor(L/2));k++){const t=mesh(new T.CylinderGeometry(.05,.05,.1,6),LM.red,g);t.rotation.z=Math.PI/2;t.position.set(sx*.72,-.25+(k-1)*.09,.5+L*.03);}}
+  if(L>=3){const tail=box(g,.2,.18,.4,0,-.05,1.9,LM.dark);void tail;}},
  gear(g,L){for(const s of [-1,1]){const t=mesh(new T.TorusGeometry(.33+L*.025,.07+L*.012,8,18),LM.rubber,g);t.rotation.y=Math.PI/2;t.position.set(s*.65,-1,-.45);
   if(L>=2){const sp=mesh(new T.CapsuleGeometry(.18,.5,4,10),LM.wing,g);sp.rotation.x=Math.PI/2;sp.position.set(s*.65,-.85,-.45);sp.scale.set(1,1.2,1);}
   if(L>=3){const st=box(g,.07,.55,.07,s*.42,-.7,-.2,LM.chrome);st.rotation.z=s*.35;}
@@ -580,6 +585,23 @@ document.querySelectorAll('[data-dev]').forEach(b=>b.onclick=()=>{const k=b.data
 let resetArmed=0;function confirmReset(){const b=document.querySelector('[data-dev=reset]');if(performance.now()<resetArmed){resetArmed=0;b.textContent='RESET CAREER';return true;}
  resetArmed=performance.now()+5000;b.textContent='CLICK AGAIN TO RESET EVERYTHING';setTimeout(()=>{if(performance.now()>=resetArmed)b.textContent='RESET CAREER';},5100);return false;}
 
+// ── Hook gating and air defences (v0.80) ─────────────────────────────────────────────────
+function winchOK(){return LEGACY_MODES&&!job||partState(career,'winch').unlocked;}
+// What a job needs that the plane doesn't have yet (null if nothing).
+function jobNeeds(j){if(!j.hook)return null;if(!partState(career,'winch').unlocked)return 'NEEDS WINCH & HOOK';if(j.weight&&perf.strength<j.weight)return `NEEDS WINCH LEVEL ${j.weight-1} (${CRATE_WEIGHTS[j.weight].toLowerCase()} crate)`;return null;}
+function dropFlares(){if(!partState(career,'flares').unlocked){if(threats.armed)notify('NO FLARE DISPENSER · UNLOCK ONE IN THE PLANE SHOP');return;}const r=threats.flare(aircraft.position.clone(),state.forward,state.normal,perf.decoy);if(!r){if(threats.armed)notify('OUT OF FLARES');return;}audio.sfx.flare();notify(r.pulled?`FLARES · ${r.pulled} MISSILE${r.pulled>1?'S':''} DECOYED · ${r.left} LEFT`:`FLARES AWAY · ${r.left} LEFT`);noticeUntil=performance.now()+2200;}
+function handleThreat(e){
+ if(e.type==='radar'){audio.sfx.radar();if(performance.now()>noticeUntil-1500){notify(`RADAR CONTACT · A MISSILE SITE IS LOCKING ON · DIVE BELOW ${RADAR_FLOOR*10} m OR GET OUT OF RANGE`);noticeUntil=performance.now()+3500;}}
+ else if(e.type==='launch'){audio.sfx.launch();notify(`MISSILE LAUNCH! · BARREL ROLL (Q/E) WHEN IT'S ${DODGE_FAR*10} m AWAY${threats.flares?', OR PRESS C FOR FLARES':''}`);noticeUntil=performance.now()+3500;shake=Math.max(shake,.2);}
+ else if(e.type==='hit'){audio.sfx.boom(1);shake=1;beginCrash('a missile');}
+ else if(e.type==='decoyed'){audio.sfx.boom(.5);notify('THE MISSILE TOOK THE FLARE');noticeUntil=performance.now()+2000;}
+ else if(e.type==='missed'){audio.sfx.boom(.4);if(performance.now()>noticeUntil-1500){notify('MISSILE MISSED · KEEP MOVING');noticeUntil=performance.now()+1800;}}
+ else if(e.type==='flak'){audio.sfx.flak(e.dist);if(e.close){route.condition=Math.max(30,route.condition-FLAK_DAMAGE);shake=Math.max(shake,.6);notify(`FLAK HIT · CARGO CONDITION −${FLAK_DAMAGE}%`);noticeUntil=performance.now()+1500;}else shake=Math.max(shake,.15);}}
+// Warning tones: a slow beep while a radar locks on, a fast one while a missile is in the air.
+function threatAlarm(dt){const ts=threats.status;document.body.classList.toggle('missile',mode==='flight'&&ts.inbound>0);if(mode!=='flight')return;lockBeep-=dt;
+ if(ts.inbound&&lockBeep<=0){lockBeep=Math.max(.07,Math.min(.3,ts.nearest/120));audio.sfx.missileWarn();}
+ else if(!ts.inbound&&ts.locking>0&&lockBeep<=0){lockBeep=.5-ts.locking*.38;audio.sfx.lockBeep(ts.locking);}}
+
 function frame(now){requestAnimationFrame(frame);const dt=Math.min((now-last)/1000,.04);last=now;let camHandled=false;
  if(mode==='cutscene')camHandled=updateCutscene(dt);
  else if(mode==='rollout')camHandled=updateRollout(dt);
@@ -589,6 +611,7 @@ function frame(now){requestAnimationFrame(frame);const dt=Math.min((now-last)/10
  else if(mode==='crash')camHandled=updateCrash(dt);
  else if(mode==='flight'||mode==='intro'){
   const steer=mode==='flight'&&mouse.active,clamp1=v=>Math.max(-1,Math.min(1,v));
+  {const w=extras.carryWeight();state.perf=w?{...perf,speed:perf.speed*(1-Math.max(.02,.07*w-.03*(perf.strength-w))),climb:perf.climb*(1-.05*w)}:perf;}
   advance(state,{turn:mode==='flight'?clamp1(Number(!!keys.right)-Number(!!keys.left)+(steer?mouseAxis(mouse.x):0)+extras.buffet.turn+Math.sin(worldTime*8.1)*seaLife.pull(state.normal,worldTime)*1.3):0,climb:mode==='flight'?clamp1(Number(!!keys.up)-Number(!!keys.down)+(steer?mouseAxis(-mouse.y):0)+extras.buffet.climb+Math.sin(worldTime*6.3+1)*seaLife.pull(state.normal,worldTime)):0,boost:mode==='flight'&&keys.boost&&state.fuel>0,throttle:mode==='flight'?(Number(!!keys.faster)-Number(!!keys.slower)):0,engineOut:mode==='flight'&&state.fuel<=0,floor:mode==='flight'?0:7},dt*(mode==='intro'?.28:1));
   if(mode==='flight'){updateFuelAndTerrain(dt);if(mode==='flight')careerFlight(dt);if(run.pendingNext>0&&(run.pendingNext-=dt)<=0)nextDay();}
   prop.rotation.z+=dt*(state.fuel<=0&&mode==='flight'?Math.max(0,8):keys.boost?95:65);clouds.rotation.y+=dt*.001;
@@ -610,11 +633,12 @@ function frame(now){requestAnimationFrame(frame);const dt=Math.min((now-last)/10
  if(mode!=='paused'){worldTime+=dt;for(const e of seaLife.update(dt,worldTime,mode==='flight'?position:null))if(e.type==='horn')audio.sfx.horn(e.ship);
   if(mode==='flight'){const pull=seaLife.pull(state.normal,worldTime);if(pull>0){route.condition=Math.max(40,route.condition-dt*3*pull);if(worldTime-spoutNotice>6){spoutNotice=worldTime;notify('WATERSPOUT · HOLD ON · FLY AROUND IT');}}}
   graphics.update(dt,{state,planeWorld:position,time:worldTime,engine:mode==='rollout'?(roll.t<PHASES.doors?.2:1):mode==='touchdown'?Math.min(1,state.speed/12):mode==='flight'||mode==='landing'?(state.fuel>0?Math.min(1,state.speed/12):0):mode==='cutscene'?(cine.t<LOAD_TIME?.25:1):mode==='intro'?1:0});
-  celebrations.update(dt);for(const e of extras.update(dt,{state,planeWorld:position,hookWorld:mode==='flight'?updateLine(dt,position):(updateLine(dt,position),null),active:mode==='flight',par:curDay.par,grab:perf.grab}))handleChallenge(e);}
+  celebrations.update(dt);for(const e of extras.update(dt,{state,planeWorld:position,hookWorld:mode==='flight'?updateLine(dt,position):(updateLine(dt,position),null),active:mode==='flight',par:curDay.par,grab:perf.grab,strength:perf.strength}))handleChallenge(e);
+   for(const e of threats.update(dt,{active:mode==='flight',planeWorld:position,planeVel:state.forward.clone().multiplyScalar(state.speed),altitude:state.altitude,groundUnder:groundHeight(state.normal)}))handleThreat(e);threatAlarm(dt);}
  if(shake>0){shake=Math.max(0,shake-dt);camera.position.add(new T.Vector3(Math.random()-.5,Math.random()-.5,Math.random()-.5).multiplyScalar(shake*1.6));}
  if(now>noticeUntil)clearNotice();
  hudTick+=dt;if(hudTick>.1){hudTick=0;{const f=Math.ceil(state.fuel);$('fuel').textContent=f;$('fuelbar').style.width=f+'%';$('fuelbox').classList.toggle('low',f<25);}$('speed').textContent=Math.round(state.speed*3);$('altitude').textContent=Math.round(state.altitude*10);const dn=job?route.done:route.delivered,tot=job?job.units:route.stops.length,pct=tot?dn/tot*100:0;$('progress').textContent=dn+'/'+tot;$('progressbar').style.width=pct+'%';$('throttle').value=Math.round(state.throttle*100);$('throttlevalue').textContent=Math.round(state.throttle*100)+'%';let nearest=null,best=-1;for(const i of islands){const dot=state.normal.dot(i.n);if(dot>best){best=dot;nearest=i;}}$('region').textContent=best>.85?nearest.label:'OPEN OCEAN';}
- mapTick+=dt;if(mapTick>.08){mapTick=0;const summary=drawMinimap(mapCanvas,state,islands,route.stops,depot.position.clone().normalize(),mapWorld,now/1000,gateGroup.visible?gateNormal:null,extras.markers());$('mapstatus').textContent=job?(route.jobDone?'Job done · head home':`${job.units-route.done} to go`):route.complete?'Head home · H marks the gate':`${summary.remaining} / ${summary.total} stops left`;}
+ mapTick+=dt;if(mapTick>.08){mapTick=0;const summary=drawMinimap(mapCanvas,state,islands,route.stops,depot.position.clone().normalize(),mapWorld,now/1000,gateGroup.visible?gateNormal:null,[...extras.markers(),...threats.markers()]);$('mapstatus').textContent=job?(route.jobDone?'Job done · head home':`${job.units-route.done} to go`):route.complete?'Head home · H marks the gate':`${summary.remaining} / ${summary.total} stops left`;}
  renderer.render(scene,camera);
  renderPip(dt);
 }enterHangar();requestAnimationFrame(frame);

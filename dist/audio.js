@@ -106,6 +106,14 @@ export function createAudio({context=null}={}){
   crash(){noise(1.4,{freq:900,to:90,vol:.6});tone(70,.9,{vol:.5,slide:30});for(let i=0;i<7;i++)noise(.08,{filter:'highpass',freq:3000,vol:.2,at:.1+i*.09+Math.random()*.05});},
   horn(type){const f=type==='cargo'?70:type==='tug'?110:type==='sail'?330:150;tone(f,1.1,{type:'sawtooth',vol:.05,attack:.08});tone(f*1.5,1.1,{type:'sawtooth',vol:.03,attack:.08});},
   tick(){tone(1400,.05,{type:'square',vol:.05});},
+  // Air defences (v0.80).
+  radar(){tone(1800,.08,{type:'sine',vol:.05});tone(1800,.08,{type:'sine',vol:.035,at:.16});},
+  lockBeep(level=0){tone(1000+level*500,.07,{type:'square',vol:.05});},
+  missileWarn(){tone(2100,.05,{type:'square',vol:.06});},
+  launch(){noise(1.1,{filter:'bandpass',freq:500,to:2600,q:.9,vol:.35});tone(140,.5,{type:'sawtooth',vol:.08,slide:70});},
+  boom(size=1){noise(.9+size*.6,{freq:900*size,to:70,vol:.35+.25*size});tone(60,.7,{vol:.35*size,slide:30});},
+  flak(dist=20){const v=Math.max(.06,Math.min(.4,8/Math.max(1,dist)));noise(.35,{freq:700,to:120,vol:v});tone(85,.25,{vol:v*.8,slide:45});},
+  flare(){for(let k=0;k<2;k++){noise(.12,{filter:'highpass',freq:1800,vol:.25,at:k*.08});tone(900,.15,{type:'triangle',vol:.04,at:k*.08,slide:400});}},
   // Workshop sounds for plane upgrades (v0.76): drills, hammers, ratchets and an impact wrench.
   drill(at=0,dur=.9){const f=260+Math.random()*80;tone(f*.6,.18,{type:'sawtooth',vol:.05,at,slide:f});for(let k=0;k<Math.round(dur/.12);k++)tone(f*(1+k%2*.04),.14,{type:'sawtooth',vol:.045,at:at+.15+k*.12,attack:.01});tone(f,.25,{type:'sawtooth',vol:.04,at:at+dur,slide:f*.5});noise(dur+.2,{filter:'bandpass',freq:2600,q:3,vol:.06,at});},
   hammer(at=0){tone(1900+Math.random()*700,.32,{type:'triangle',vol:.09,at});tone(3100+Math.random()*500,.18,{vol:.04,at});noise(.05,{filter:'highpass',freq:3500,vol:.3,at});tone(120,.08,{vol:.18,at,slide:70});},

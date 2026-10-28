@@ -39,6 +39,7 @@ export function allSiteNormals(){return Object.values(SITES).flatMap(s=>s.map(p=
 const PLACES=['Harbor master','Lighthouse keeper','Village school','Island clinic','Fish market','Observatory','Goat farm','Research hut','Ranger post','Hilltop chapel','Seaside inn','Boatyard','Weather station','Tea house','Pottery studio','Radio shack'];
 const GOODS=['Spare parts','Fresh bread','Medicine','Seed packets','Letters','Lamp oil','Fishing nets','Paint','Books','Tools','Coffee beans','Batteries'];
 const CRATES=['Generator','Water pump','Piano','Beehive','Telescope','Outboard motor'];
+export const CRATE_WEIGHTS=['','LIGHT','MEDIUM','HEAVY','VERY HEAVY','MASSIVE'];
 const COLORS=['#f4ad68','#f1d46f','#b6d674','#bdb0eb','#7edbd3','#f29bb0'];
 export const JOB_TYPES={
  parcels:{label:'PARCEL RUN',base:120,icon:'📦',how:'Drop each parcel on its pad. Space releases, the chute opens after a second.'},
@@ -65,20 +66,29 @@ export function makeJob(seed,{type,island}={}){
  const r=rng(seed);island=island||pick(r,JOB_ISLANDS);const tier=ISLAND_TIER[island];
  type=type||pick(r,DESERT?['parcels','parcels','crate','crate','mail','urgent']:['parcels','parcels','crate','mail','urgent','boat']);if(DESERT&&type==='boat')type='parcels';// no boats in the desert
  const sites=shuffle(r,SITES[island]),stops=[],mail=[],crates=[];let units=1,title='',parcels=0;
+ // Hard jobs (v0.80) spread over 2 (ROUGH) or 3 (DEADLY) islands, chosen among the other risky islands nearest the main one.
+ const c0=islandNormal(island),extra=tier>=2?JOB_ISLANDS.filter(l=>l!==island&&ISLAND_TIER[l]>=1).sort((a,b)=>arc(c0,islandNormal(a))-arc(c0,islandNormal(b))).slice(0,tier-1):[];
+ const isles=[island,...extra],siteOf=Object.fromEntries(isles.map(l=>[l,l===island?sites:shuffle(r,SITES[l])])),used=Object.fromEntries(isles.map(l=>[l,0]));
+ // Out of prepared sites on a small island: a spot on a ring around its middle, still on land.
+ const take=l=>{const k=used[l]++,list=siteOf[l];if(k<list.length)return list[k];const isl=ISLANDS.find(i=>i.label===l),a=k*2.4+1;return {normal:islandPoint(l,Math.cos(a)*isl.size*.5,Math.sin(a)*isl.size*.5)};};
  const place=()=>pick(r,PLACES);
- if(type==='parcels'){const n=Math.min(sites.length,2+Math.floor(r()*3));for(let i=0;i<n;i++)stops.push({name:place(),goods:pick(r,GOODS),normal:sites[i].normal,island});units=n;parcels=n+2;title=`${n} parcels`;}
- else if(type==='urgent'){stops.push({name:pick(r,['Island clinic','Field hospital','Ranger post','Lighthouse keeper']),goods:'Medicine',normal:sites[0].normal,island,urgent:{seconds:0}});parcels=2;title='Medicine, fast';}
+ if(type==='parcels'){const n=Math.max(isles.length*2,Math.min(sites.length,2+Math.floor(r()*3)));for(let i=0;i<n;i++){const l=isles[i%isles.length];stops.push({name:place(),goods:pick(r,GOODS),normal:take(l).normal,island:l});}units=n;parcels=n+2;title=`${n} parcels`;}
+ else if(type==='urgent'){stops.push({name:pick(r,['Island clinic','Field hospital','Ranger post','Lighthouse keeper']),goods:'Medicine',normal:take(island).normal,island,urgent:{seconds:0}});for(const l of extra)stops.push({name:pick(r,['Field hospital','Ranger post','Rescue hut']),goods:'Medicine',normal:take(l).normal,island:l});units=stops.length;parcels=units+1;title=units>1?`Medicine × ${units}`:'Medicine, fast';}
  else if(type==='boat'){const m=boatLoop(island,r);if(!m)return makeJob(seed+1,{type:'parcels',island});
   stops.push({name:pick(r,['Ferry Gull','Trawler Marlin','Research ship Petrel','Tug Bramble']),goods:pick(r,GOODS),motion:m,normal:null,island:null});
-  stops.push({name:place(),goods:pick(r,GOODS),normal:sites[0].normal,island});units=2;parcels=4;title='Boat + dock';}
- else if(type==='mail'){const n=2+Math.floor(r()*2);for(let i=0;i<n;i++)mail.push({normal:sites[i].normal,island});units=n;title=`${n} mailbags`;}
- else if(type==='crate'){// Pick the crate up here, deliver it to another site on this island.
-  crates.push({normal:sites[0].normal,island,goods:pick(r,CRATES)});stops.push({name:place(),goods:crates[0].goods,normal:sites[sites.length-1].normal,island,kind:'crate'});title=crates[0].goods;}
- const dist=islandDistance(island),pay=Math.round(JOB_TYPES[type].base*(type==='parcels'||type==='mail'?units:1)*TIERS[tier].mult*WORLD.payMult*(1+dist/700)/10)*10;
+  const dockIsle=extra[0]||island;stops.push({name:place(),goods:pick(r,GOODS),normal:take(dockIsle).normal,island:dockIsle});units=2;parcels=4;title='Boat + dock';}
+ else if(type==='mail'){const n=Math.max(isles.length,2+Math.floor(r()*2));for(let i=0;i<n;i++){const l=isles[i%isles.length];mail.push({normal:take(l).normal,island:l});}units=n;title=`${n} mailbags`;}
+ else if(type==='crate'){// Pick the crate up here and deliver it (on a hard job, to the next island over).
+  // Weight 1-5 (v0.80): the winch's lifting strength must be at least the crate's weight.
+  const weight=Math.min(5,1+tier+Math.floor(r()*2)),to=extra[0]||island;
+  crates.push({normal:take(island).normal,island,goods:pick(r,CRATES),weight});stops.push({name:place(),goods:crates[0].goods,normal:take(to).normal,island:to,kind:'crate'});title=`${crates[0].goods} · ${CRATE_WEIGHTS[weight]}`;}
+ const weight=crates[0]?.weight||0,dist=islandDistance(island),pay=Math.round(JOB_TYPES[type].base*(type==='parcels'||type==='mail'||type==='urgent'?units:1)*TIERS[tier].mult*WORLD.payMult*(1+dist/700)*(1+.35*extra.length)*(weight?1+(weight-1)*.18:1)/10)*10;
+ // Air defences on every island of a hard job: ROUGH 1 SAM each; DEADLY 2 SAMs and a flak gun each.
+ const sams=[],flak=[];for(const l of tier>=2?isles:[]){for(let k=0;k<(tier>=3?2:1);k++)sams.push({normal:take(l).normal,island:l,reload:tier>=3?4.5:7});if(tier>=3)flak.push({normal:take(l).normal,island:l});}
  const stopSpecs=stops.map((s,i)=>({...s,color:COLORS[i%COLORS.length]}));
  // Urgent timer: the straight-line flight there at cruise, plus a margin.
  for(const s of stopSpecs)if(s.urgent)s.urgent.seconds=Math.round(dist/18*1.6+45);// includes turning around after takeoff
- return {id:seed,type,island,tier,title,pay,units,parcels,stops:stopSpecs,mail,crates,dist,typeLabel:JOB_TYPES[type].label,how:JOB_TYPES[type].how,recipe:features(tier,r)};
+ return {id:seed,type,island,tier,title,pay,units,parcels,stops:stopSpecs,mail,crates,dist,islands:isles,sams,flak,weight,hook:type==='crate'||type==='mail',typeLabel:JOB_TYPES[type].label,how:JOB_TYPES[type].how,recipe:features(tier,r)};
 }
 // Stop specs ready for newRoute() (boats get their t=0 position) and the resolved challenge features.
 export function jobRoute(job){
@@ -88,7 +98,8 @@ export function jobRoute(job){
  // Storm cells sit across the flight out, so ROUGH and DEADLY jobs make you fly around them.
  const want=job.recipe.storms||0,target=anchor[0].normal,from=homeStart();
  for(let k=f.storms.length;k<want;k++)f.storms.push({center:slerpNormal(from,target,[.62,.84][k]??.7),radius:20,id:k});
- f.crates=job.crates.map((c,i)=>({normal:c.normal.clone(),island:c.island,goods:c.goods,id:i,taken:false}));f.fuel=[];
+ f.crates=job.crates.map((c,i)=>({normal:c.normal.clone(),island:c.island,goods:c.goods,weight:c.weight||1,id:i,taken:false}));f.fuel=[];
+ f.sams=(job.sams||[]).map(s=>({...s,normal:s.normal.clone()}));f.flak=(job.flak||[]).map(s=>({...s,normal:s.normal.clone()}));
  return {stops,features:f};
 }
 // The board: four jobs, at least one CALM, at most one DEADLY, no two alike.

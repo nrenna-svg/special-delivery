@@ -118,7 +118,9 @@ export function createExtras({T,scene,mat,palette,label,hemi,sun,aircraft,baseSk
   for(const mm of masts){if(mm.taken)continue;mm.bag.rotation.y+=dt;mm.sign.scale.setScalar(4+Math.sin(time*3)*.3);
    if(ctx.active&&ctx.hookWorld&&ctx.hookWorld.distanceTo(mm.hook)<(ctx.grab||2.6)){mm.taken=true;mailTaken++;mm.bag.visible=false;mm.sign.material=mm.sign.material.clone();mm.sign.material.opacity=.35;mm.sign.material.transparent=true;spark(mm.hook);events.push({type:'mail',left:masts.length-mailTaken});}}
   // Crates: hook the ring to lift the crate; it then hangs under the hook until released.
-  for(const c of crates){if(!c.taken){c.sign.scale.setScalar(4+Math.sin(time*3)*.3);if(ctx.active&&ctx.hookWorld&&ctx.hookWorld.distanceTo(c.hook)<(ctx.grab||2.6)+(c.dropped?.8:0)){c.taken=c.carried=true;c.sign.visible=false;if(c.flag)c.flag.visible=false;root.attach(c.load);spark(c.hook);events.push({type:'crate',goods:c.goods});}}
+  for(const c of crates){if(!c.taken){c.sign.scale.setScalar(4+Math.sin(time*3)*.3);c.heavyCool=Math.max(0,(c.heavyCool||0)-dt);const inReach=ctx.active&&ctx.hookWorld&&ctx.hookWorld.distanceTo(c.hook)<(ctx.grab||2.6)+(c.dropped?.8:0);
+   // Too heavy for this winch (v0.80): the hook can't lift it.
+   if(inReach&&(c.weight||1)>(ctx.strength||99)){if(c.heavyCool===0){c.heavyCool=3;events.push({type:'tooheavy',weight:c.weight});}}else if(inReach){c.taken=c.carried=true;c.sign.visible=false;if(c.flag)c.flag.visible=false;root.attach(c.load);spark(c.hook);events.push({type:'crate',goods:c.goods});}}
    if(c.carried){const at=ctx.hookWorld||tmp.copy(planeWorld).addScaledVector(state.normal,-1.6);c.load.position.copy(at).addScaledVector(state.normal,-(MAIL_ALT-1.2-6.35)-.1);c.load.quaternion.setFromUnitVectors(up,state.normal);}}
   // Gulls: fly in formation, scatter when struck.
   for(const fl of flocks){fl.cooldown=Math.max(0,fl.cooldown-dt);fl.scatter=Math.max(0,fl.scatter-dt);const pos=flockBirds(fl,time);
@@ -188,5 +190,6 @@ export function createExtras({T,scene,mat,palette,label,hemi,sun,aircraft,baseSk
  // Seconds until a parcel dropped now would land (null hides the boat lead markers).
  function setLead(seconds){leadTime=seconds;}
  function crateDebug(){return crates.map(c=>({hook:c.hook.clone(),taken:c.taken,carried:c.carried,dropped:c.dropped}));}
- return {crateDebug,crateDown,crateRestock,crateTarget,mastTargets,releaseCrate,get carrying(){return crates.some(c=>c.carried);},start,clear,update,setLead,status,navTarget,markers,summary,targets,obstacles,nearestFuel,get wind(){return f?.wind||null;},get buffet(){return buffet;},get mailLeft(){return masts.length-mailTaken;},get hasMail(){return masts.length>0;},get windy(){return !!f?.wind;}};
+ function carryWeight(){return crates.find(c=>c.carried)?.weight||0;}
+ return {carryWeight,crateDebug,crateDown,crateRestock,crateTarget,mastTargets,releaseCrate,get carrying(){return crates.some(c=>c.carried);},start,clear,update,setLead,status,navTarget,markers,summary,targets,obstacles,nearestFuel,get wind(){return f?.wind||null;},get buffet(){return buffet;},get mailLeft(){return masts.length-mailTaken;},get hasMail(){return masts.length>0;},get windy(){return !!f?.wind;}};
 }

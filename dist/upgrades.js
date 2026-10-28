@@ -28,14 +28,16 @@ export const PARTS=[
   per:{turn:.06,bank:.1,roll:-.06},show:[['turn','Turn rate',v=>`${Math.round(v*100)}%`]]},
  {id:'chutes',name:'Parachutes',icon:'🪂',rank:1,unlock:3000,base:1600,blurb:'Chutes open sooner, drift less in wind and land softer, so you can drop lower.',
   per:{chute:-.08,drift:-.08,soft:.35},show:[['chute','Chute opens after',v=>`${v.toFixed(2)} s`],['drift','Wind drift',v=>`${Math.round(v*100)}%`]]},
- {id:'winch',name:'Winch & hook',icon:'🪝',rank:2,unlock:10000,base:2500,blurb:'A longer, faster line and a wider hook, for crates and mailbags.',
-  per:{line:1.5,reel:.8,grab:.25},show:[['line','Line length',v=>`${Math.round(v*10)} m`],['grab','Hook reach',v=>`${v.toFixed(2)}`]]},
+ {id:'winch',name:'Winch & hook',icon:'🪝',rank:0,unlock:1500,base:2000,blurb:'Unlock it to fly hook jobs (crates and mailbags). Upgrades lift heavier crates, lower and reel faster, add line and widen the hook.',
+  per:{strength:1,reel:.8,line:1.5,grab:.25},show:[['strength','Lifts',v=>['—','light','medium','heavy','very heavy','massive','massive'][Math.min(6,Math.round(v))]+' crates'],['reel','Winch speed',v=>`${Math.round(v/5*100)}%`],['line','Line',v=>`${Math.round(v*10)} m`]]},
+ {id:'flares',name:'Flare dispenser',icon:'✴',rank:1,unlock:2500,base:1800,blurb:'Decoy flares (C) for missile country. Unlocking fits a dispenser with 2 flares; each level adds a flare and makes missiles likelier to chase them.',
+  per:{flares:1,decoy:.05},show:[['flares','Flares per flight',v=>`${v}`],['decoy','Decoy chance',v=>`${Math.round(v*100)}%`]]},
  {id:'gear',name:'Landing gear & brakes',icon:'🛞',rank:2,unlock:10000,base:2500,blurb:'Tougher gear survives harder, faster touchdowns, and stronger brakes stop you sooner.',
   per:{sink:.25,landSpeed:1,brake:.6},show:[['sink','Max sink',v=>`${Math.round(v*10)} m/s`],['brake','Braking',v=>`${Math.round(v/4.5*100)}%`]]}
 ];
 export const PART=Object.fromEntries(PARTS.map(p=>[p.id,p]));
 // Base stats of the stock plane (multipliers are 1).
-export const BASE={speed:1,accel:1,tank:1,spares:0,climb:1,ceiling:90,slow:16,turn:1,bank:1,roll:1,chute:1,drift:1,soft:5.5,line:14,reel:5,grab:2.6,sink:2.6,landSpeed:24,brake:4.5};
+export const BASE={speed:1,accel:1,tank:1,spares:0,climb:1,ceiling:90,slow:16,turn:1,bank:1,roll:1,chute:1,drift:1,soft:5.5,line:14,reel:5,grab:2.6,strength:1,flares:2,decoy:.7,sink:2.6,landSpeed:24,brake:4.5};
 
 export function levelCost(part,level){return Math.round(part.base*Math.pow(2.05,level-1)/50)*50;}// price of reaching `level`
 export function newParts(){return Object.fromEntries(PARTS.map(p=>[p.id,{unlocked:p.unlock===0,level:0}]));}
