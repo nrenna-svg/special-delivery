@@ -10,6 +10,7 @@ import {offsetNormal,slerpNormal} from './challenges.js';
 import {landAt} from './hazards.js';
 import {newParts} from './upgrades.js';
 import {cargoFor} from './cargo.js';
+import {rivalForTier} from './rivals.js';
 import {WORLD,DESERT} from './worlds.js';
 
 export const TIERS=[
@@ -90,7 +91,9 @@ export function makeJob(seed,{type,island}={}){
  const stopSpecs=stops.map((s,i)=>({...s,color:COLORS[i%COLORS.length]}));
  // Urgent timer: the straight-line flight there at cruise, plus a margin.
  for(const s of stopSpecs)if(s.urgent)s.urgent.seconds=Math.round(dist/18*1.6+45);// includes turning around after takeoff
- return {cargo:cargoFor(seed,type),id:seed,type,island,tier,title,pay,units,parcels,stops:stopSpecs,mail,crates,dist,islands:isles,sams,flak,weight,hook:type==='crate'||type==='mail',typeLabel:JOB_TYPES[type].label,how:JOB_TYPES[type].how,recipe:features(tier,r)};
+ // Race jobs (v0.92): a red rival courier flies the same drops; whoever lands a parcel first gets the stop.
+ const race=(type==='parcels'||type==='urgent')&&tier<=2&&rng(seed*31+7)()<.4?rivalForTier(tier,rng(seed*17+3)):null;
+ return {race,cargo:cargoFor(seed,type),id:seed,type,island,tier,title,pay,units,parcels,stops:stopSpecs,mail,crates,dist,islands:isles,sams,flak,weight,hook:type==='crate'||type==='mail',typeLabel:JOB_TYPES[type].label,how:JOB_TYPES[type].how,recipe:features(tier,r)};
 }
 // Stop specs ready for newRoute() (boats get their t=0 position) and the resolved challenge features.
 export function jobRoute(job){
@@ -122,8 +125,10 @@ export function jobBoard(seed){const r=rng(seed),jobs=[];let tries=0;
 export function objectivePay(job,{accuracy=100,condition=100,onTime=null}={}){
  const unit=job.pay/job.units;let p=unit*(.75+.25*accuracy/100)*(.6+.4*condition/100);if(onTime)p*=1.4;return Math.round(p);}
 // Ledger at the end of a flight. earned: objective pay so far; landing: {bonus} fraction or null (auto ring).
-export function settle(job,{earned,done,crashes,landing,failed=false}){
+export function settle(job,{earned,done,crashes,landing,failed=false,race=null}){
  const lines=[{label:'Job pay',amount:earned}];
+ // race: {won, mine, theirs, company}. Winning a race pays a 30% purse on top; losing pays only your own stops.
+ if(race&&!failed)lines.push(race.won?{label:`Race won vs ${race.company} (${race.mine}–${race.theirs})`,amount:Math.round(job.pay*.3)}:{label:`Race lost to ${race.company} (${race.mine}–${race.theirs})`,amount:0});
  if(!failed&&done>=job.units)lines.push({label:'Job complete bonus',amount:Math.round(job.pay*.15)});
  if(landing?.bonus&&earned>0)lines.push({label:`${landing.label} (manual landing)`,amount:Math.round((earned+(done>=job.units?job.pay*.15:0))*landing.bonus)});
  if(crashes)lines.push({label:`Repairs ×${crashes}`,amount:-crashes*TIERS[job.tier].repair});

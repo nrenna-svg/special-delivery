@@ -308,3 +308,17 @@ body.titlescreen .stamp{display:none}
 #tm-career{position:fixed;left:6vw;bottom:96px;color:#f6f3df;text-shadow:0 2px 8px #0b2a35}
 #titlepanel{color:#f6f3df;top:auto;bottom:100px;transform:none}
 @media(max-width:760px){#titlemenu{left:16px;right:16px;bottom:16px}#titlemenu .primary{width:100%}#tm-career{left:16px;bottom:150px}#titlepanel{bottom:200px}}
+
+/* v0.92 rival races */
+#radio{position:absolute;left:50%;top:78px;transform:translateX(-50%);z-index:5;display:flex;align-items:center;gap:12px;background:#2a1013e6;border:1px solid #ff6b6b88;border-left:4px solid #ff4d4d;border-radius:8px;padding:10px 16px 10px 10px;max-width:min(560px,calc(100% - 32px));box-shadow:0 8px 24px #0006;color:#f6f3df}
+#radio[hidden]{display:none}
+#radio.in{animation:radioIn .35s ease-out}
+@keyframes radioIn{from{opacity:0;transform:translate(-50%,10px)}to{opacity:1;transform:translate(-50%,0)}}
+#radioav{width:38px;height:38px;border-radius:50%;background:#c8352b;display:grid;place-items:center;font-style:normal;font-weight:800;font-size:13px;letter-spacing:.5px;flex-shrink:0;border:2px solid #ffd9d4}
+#radio small{display:block;font-size:9px;letter-spacing:1.6px;color:#ffb3ab;font-weight:700}
+#radiotext{font-size:14px;line-height:1.35}
+.job .racetag{font-size:10px;font-weight:800;letter-spacing:.8px;color:#fff;background:#c8352b;border-radius:3px;padding:1px 6px}
+.racehead{color:#ff8a7a!important}
+em.race{color:#ff9a90;font-style:normal;font-weight:700}
+@media(max-width:760px){#radio{top:auto;bottom:200px}}
+#radio{top:auto;bottom:150px}@media(max-width:760px){#radio{bottom:210px}}

@@ -1,5 +1,12 @@
 # Special Delivery changelog
 
+## v0.92 — Rival races (red rival couriers with radio banter)
+
+- New rivals.js: three rival companies with red planes (seaplane, striped monoplane, triplane), honest steering AI with a light rubber band, drop fumbles, red parachute drops that claim pads, wake turbulence, and banter lines for every race moment.
+- career.js: ~1 in 5 parcel/urgent jobs on tiers 0-2 are races (`job.race`); `settle` adds a 30% purse for a win and shows the score.
+- game.js: rival spawns beside you after takeoff, radio box + crackle sound, pads lost to the rival turn red, race scoreboard in the HUD, rival on the map, race details and your record on the job board, feud record saved.
+- New tests/rivals.test.mjs (92 tests total).
+
 ## v0.90 — Cargo personalities and risky shortcuts
 
 - Deterministic fragile, machinery and live cargo contracts, job-board handling advice, flight HUD, visible parcel racks, loaded handling and condition effects; heavy-load fuel estimates.

@@ -106,6 +106,7 @@ export function createAudio({context=null}={}){
   crash(){noise(1.4,{freq:900,to:90,vol:.6});tone(70,.9,{vol:.5,slide:30});for(let i=0;i<7;i++)noise(.08,{filter:'highpass',freq:3000,vol:.2,at:.1+i*.09+Math.random()*.05});},
   horn(type){const f=type==='cargo'?70:type==='tug'?110:type==='sail'?330:150;tone(f,1.1,{type:'sawtooth',vol:.05,attack:.08});tone(f*1.5,1.1,{type:'sawtooth',vol:.03,attack:.08});},
   tick(){tone(1400,.05,{type:'square',vol:.05});},
+  radio(){noise(.18,{filter:'bandpass',freq:1600,q:2.5,vol:.18});tone(1250,.06,{type:'square',vol:.035,at:.2});tone(1650,.06,{type:'square',vol:.03,at:.28});noise(.12,{filter:'bandpass',freq:2200,q:3,vol:.08,at:.3});},
   // Air defences (v0.80).
   radar(){tone(1800,.08,{type:'sine',vol:.05});tone(1800,.08,{type:'sine',vol:.035,at:.16});},
   lockBeep(level=0){tone(1000+level*500,.07,{type:'square',vol:.05});},
