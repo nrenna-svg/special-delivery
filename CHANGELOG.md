@@ -1,5 +1,12 @@
 # Special Delivery changelog
 
+## v0.72 — Missed crates
+
+Play-test question: what happens if you hook the crate and miss the drop? It was a dead end (the job could never finish). Now it depends on the island tier:
+- **CALM / BREEZY:** a crate that misses its pad stays where it landed, floating if it hit water, with its lifting ring up and a C flag over it. Hook it again and have another go (−15% cargo condition each miss, and a 3.4 hook radius instead of 2.6 since it sits low). A smashed crate is restacked on its tower by the crew (−30% condition). (extras.js `crateDown`, `crateRestock`; game.js `crateLost`.)
+- **ROUGH / DEADLY:** one shot. A missed or smashed crate fails the job; the gold ring appears and the dispatch panel points you home. The ledger explains why the client paid nothing.
+- **Never stranded:** a failed job, or a parcel job that runs out of parcels with stops still open, now always shows the gold ring and points home (out of parcels still pays for what was delivered).
+
 ## v0.70 — Career mode: hangar, job board, landings
 
 A new direction. The game is now a career flown from a hangar.

@@ -1,4 +1,4 @@
-# Special Delivery — v0.70
+# Special Delivery — v0.72
 
 Around the world. Right on time.
 
@@ -10,6 +10,7 @@ The game starts inside the Kestrel Courier Co. hangar on the home island. A cork
 - Island danger tiers (career.js `TIERS`, `ISLAND_TIER`): CALM (Homeward Isles, Emerald Reach, Western Reach) ×1 pay, a crash costs repairs; BREEZY (Eastern Wilds, Lighthouse Coast) ×1.7, wind and gulls; ROUGH (Coral Keys, Southern Atolls, Orchid Isle) ×2.6, storms and waterspouts, a crash fails the job and the client pays nothing; DEADLY (Puffin Rocks, Sunset Archipelago) ×4, the worst weather, and a crash out there ends the whole career run. Pay also scales with distance.
 - Pay: each objective pays an equal share of the job, scaled by drop accuracy and cargo condition (urgent on time ×1.4). Finishing everything adds 15%. A manual landing adds 15-70% on top, graded GREASED IT / FIRM / BOUNCY, +10% if centered. Repairs are deducted per crash. Cash, jobs done and career earnings are saved in localStorage (`special-delivery-career`, best career in `-best`).
 - Manual landing (airfield.js `gradeTouchdown`): touch down on the runway with sink ≤ 26 m/s, speed ≤ 72 kt, wings level and lined up with the runway (either direction). Below 48 kt the plane settles on its own (flight.js `SLOW_SPEED`/`SLOW_SINK`), so the easy way down is: line up, throttle back, let it sink. An approach readout (speed, sink, line-up) appears near the runway. After touchdown the plane brakes to a stop; overrunning the end is a crash.
+- Missed or smashed crates (v0.72): on CALM and BREEZY islands a crate that misses its pad stays where it landed (floating on water) with its ring up, so you can hook it again (−15% cargo condition, wider 3.4 hook radius since it sits low); a smashed crate is restacked on its tower (−30%). On ROUGH and DEADLY islands you get one shot: a lost crate fails the job. A failed job, or a parcel job that runs out of parcels, always shows the gold ring and points you home.
 - Calling off a flight (the footer button) tows you home with no pay.
 - Endless Run and Training Days are hidden, not deleted: set `LEGACY_MODES=true` in game.js to bring the old menus back (they have not been re-checked since the world and runway changed).
 - World: planet radius 270 (was 200; grown 35% again). The home island is bigger (size 62) to fit a 66-unit runway that follows the planet's curve, an apron and the quonset hangar (hangar.js builds the scenery; airfield.js has the runway frame, rollout path and landing rules).
