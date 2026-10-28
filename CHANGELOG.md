@@ -1,5 +1,12 @@
 # Special Delivery changelog
 
+## v0.90 — Cargo personalities and risky shortcuts
+
+- Deterministic fragile, machinery and live cargo contracts, job-board handling advice, flight HUD, visible parcel racks, loaded handling and condition effects; heavy-load fuel estimates.
+- Optional teal fly-through arches on outbound routes, solid rock rims with swept collision checks, map markers and one tailwind reward per flight.
+- Added focused cargo and arch-crossing tests.
+
+
 ## v0.86 — Title screen show reel
 
 - The plane now flies itself on the title screen: weaving S-turns, barrel rolls, loops, boost bursts and parachute parcel drops, at full speed (was a slow-motion straight line).

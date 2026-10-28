@@ -9,6 +9,7 @@ import {ISLANDS,islandPoint,islandNormal,buildFeatures,homeStart} from './days.j
 import {offsetNormal,slerpNormal} from './challenges.js';
 import {landAt} from './hazards.js';
 import {newParts} from './upgrades.js';
+import {cargoFor} from './cargo.js';
 import {WORLD,DESERT} from './worlds.js';
 
 export const TIERS=[
@@ -85,10 +86,11 @@ export function makeJob(seed,{type,island}={}){
  const weight=crates[0]?.weight||0,dist=islandDistance(island),pay=Math.round(JOB_TYPES[type].base*(type==='parcels'||type==='mail'||type==='urgent'?units:1)*TIERS[tier].mult*WORLD.payMult*(1+dist/700)*(1+.35*extra.length)*(weight?1+(weight-1)*.18:1)/10)*10;
  // Air defences on every island of a hard job: ROUGH 1 SAM each; DEADLY 2 SAMs and a flak gun each.
  const sams=[],flak=[];for(const l of tier>=2?isles:[]){for(let k=0;k<(tier>=3?2:1);k++)sams.push({normal:take(l).normal,island:l,reload:tier>=3?4.5:7});if(tier>=3)flak.push({normal:take(l).normal,island:l});}
+ const cargo=cargoFor(seed,type);if(type!=='mail'&&type!=='urgent'){const goods={fragile:'Cakes & ceramics',heavy:'Machinery',live:'Live chickens'}[cargo];for(const s of stops)s.goods=goods;for(const c of crates)c.goods=goods;if(type==='crate')title=goods+' · '+CRATE_WEIGHTS[weight];}
  const stopSpecs=stops.map((s,i)=>({...s,color:COLORS[i%COLORS.length]}));
  // Urgent timer: the straight-line flight there at cruise, plus a margin.
  for(const s of stopSpecs)if(s.urgent)s.urgent.seconds=Math.round(dist/18*1.6+45);// includes turning around after takeoff
- return {id:seed,type,island,tier,title,pay,units,parcels,stops:stopSpecs,mail,crates,dist,islands:isles,sams,flak,weight,hook:type==='crate'||type==='mail',typeLabel:JOB_TYPES[type].label,how:JOB_TYPES[type].how,recipe:features(tier,r)};
+ return {cargo:cargoFor(seed,type),id:seed,type,island,tier,title,pay,units,parcels,stops:stopSpecs,mail,crates,dist,islands:isles,sams,flak,weight,hook:type==='crate'||type==='mail',typeLabel:JOB_TYPES[type].label,how:JOB_TYPES[type].how,recipe:features(tier,r)};
 }
 // Stop specs ready for newRoute() (boats get their t=0 position) and the resolved challenge features.
 export function jobRoute(job){

@@ -1,4 +1,6 @@
-# Special Delivery — v0.86
+# Special Delivery — v0.90
+
+Cargo personalities: fragile loads lose condition under hard banks, boost and stunts; machinery reduces loaded speed 12% and climb 22%; chickens shift sideways gently every 12 seconds. Effects stop after delivery. Job details explain each load; fuel estimates include heavy cargo. Optional teal arches appear along job routes (↗ on map). Clear the narrow center for a six-second 25% cruise-speed tailwind once per job; the rock rim is a collision hazard. Going around is always allowed.
 
 Around the world. Right on time.
 
