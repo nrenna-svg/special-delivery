@@ -1,5 +1,20 @@
 # Special Delivery changelog
 
+## v0.70 — Career mode: hangar, job board, landings
+
+A new direction. The game is now a career flown from a hangar.
+- **Old modes hidden:** Endless Run and Training Days are gone from the menus (code kept behind `LEGACY_MODES` in game.js). The opening loading cutscene is gone too.
+- **World +35%:** `RADIUS` 200 → 270. Kestrel Island moved to sit under the airfield and grew to size 62; one sea stack that ended up on it was moved (sealife.js).
+- **Airfield (airfield.js, hangar.js):** a 66 × 8 runway built from short slabs that follow the planet's curve (wheels stay at `GROUND_ALT` along its length), threshold stripes, edge and approach lights, an apron, a windsock and a quonset hangar with sliding red doors, a sign, workbench, pegboard, drums, crates, tyres, lamps and a pinned-up job board. The old short runway and loading crew are hidden.
+- **Hangar start:** the game opens inside the hangar with the job board (HTML, styled as a corkboard with pinned job slips). Taking a job plays the rollout: doors open, taxi out, right turn onto the runway, takeoff roll, climb-out (`rolloutPose`, ~12 s, Space skips).
+- **Jobs (career.js):** five job types and four island danger tiers (see README). Fixed delivery sites per island (`SITES`) are kept clear of trees and houses. ROUGH and DEADLY jobs put storm cells across the flight out.
+- **Crate hauls (extras.js):** a lattice tower with a strapped crate and a lifting ring at hook height. Sweep the hook through the ring and the crate hangs from the line; Space releases it. Crates only count on crate pads (`kind:'crate'` in delivery.js) and their chute opens at once, since they hang low.
+- **Landing (game.js career section):** fly home and either touch down yourself (graded, cash bonus) or fly the gold ring for the old scripted auto-landing. New low-speed settling in flight.js makes landings learnable. Approach readout near the runway. PULL UP is muted on the approach.
+- **Crashes by tier:** CALM/BREEZY respawn as before and cost repairs; ROUGH fails the job; DEADLY ends the career (career-over ledger, then a new career). A crash on the home runway ends the flight with repairs.
+- **Pay ledger** in the hangar after every flight; cash / jobs done / best career shown at the top.
+- The blue depot is hidden in career mode (the tank is filled in the hangar). The footer restart button became "Call off flight"; R no longer restarts during a job.
+- New tests: tests/career.test.mjs (tiers, sites, every job type on every island, board rules, pay, crate pads, rollout path, runway frame, airfield placement, landing grades, low-speed settle, crate chutes).
+
 ## v0.68 — Clean HUD
 
 Play-testing: the screen was too busy, leaving too little open sky in the middle. Most of this is CSS appended at the end of style.css (search "v0.68 clean HUD").

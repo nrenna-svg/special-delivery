@@ -9,12 +9,12 @@ import {ringHit,ringScore,STREAK_WINDOW,windAt,boatNormal,flockBirds,BIRD_HIT,BI
 
 export function createExtras({T,scene,mat,palette,label,hemi,sun,aircraft,baseSky}){
  const up=new T.Vector3(0,1,0),tmp=new T.Vector3(),tmp2=new T.Vector3(),basis=new T.Matrix4();
- let root=null,f=null,route=null,pads=null,fuelHoops=[],rings=[],streak=0,lastRing=-99,ringsTaken=0,boats=[],socks=[],streaks=[],masts=[],flocks=[],storms=[],urgent=[],sparks=[],feathers=[];
+ let crates=[],root=null,f=null,route=null,pads=null,fuelHoops=[],rings=[],streak=0,lastRing=-99,ringsTaken=0,boats=[],socks=[],streaks=[],masts=[],flocks=[],storms=[],urgent=[],sparks=[],feathers=[];
  let leadTime=null,birdHits=0,stormNotice=-99,flash=0,stars=null,lamp=null,glow=0,buffet={turn:0,climb:0},inStorm=0,time=0,lateAnnounced=new Set(),mailTaken=0;
  const m={ring:mat('#ffd36a',{emissive:'#ffb52c',emissiveIntensity:.8}),hull:mat('#c94f3d'),hull2:mat('#2f6f8c'),deck:mat('#d9c08a'),cabin:mat('#f2ead6'),
   sock:mat('#ff7a3a',{side:T.DoubleSide}),mast:[mat('#d8473a'),mat('#f4efe2')],bag:mat('#9b7448'),rope:mat('#2b3a40'),
   fuel:mat('#5fe39a',{emissive:'#1fae5c',emissiveIntensity:.7}),bird:mat('#f3f1ea'),birdTip:mat('#3a4750'),cloud:mat('#4d5866',{flatShading:true}),cloud2:mat('#626e7d',{flatShading:true}),rain:mat('#9fb7d6',{transparent:true,opacity:.45}),
-  feather:mat('#ffffff'),spark:mat('#fff2b0',{emissive:'#ffd36a',emissiveIntensity:1})};
+  feather:mat('#ffffff'),spark:mat('#fff2b0',{emissive:'#ffd36a',emissiveIntensity:1}),crate:mat('#b88a52'),strap:mat('#3b4a50')};
  const boltMat=new T.LineBasicMaterial({color:'#f4f7ff'}),gloom=new T.Color('#4a5462');
  const add=(geo,material,p)=>{const o=new T.Mesh(geo,material);p.add(o);return o;};
  const box=(p,w,h,d,x,y,z,material)=>{const o=add(new T.BoxGeometry(w,h,d),material,p);o.position.set(x,y,z);return o;};
@@ -51,6 +51,15 @@ export function createExtras({T,scene,mat,palette,label,hemi,sun,aircraft,baseSk
    const bag=add(new T.IcosahedronGeometry(.8,1),m.bag,g);bag.scale.set(1,1.3,1);bag.position.set(0,bagY,-3.9);const sign=label('M');sign.position.y=14.2;g.add(sign);
    // Hook point is the bag, in world space.
    const hook=new T.Vector3();g.updateMatrixWorld(true);bag.getWorldPosition(hook);return {...mm,g,bag,sign,hook,taken:false};});
+  // Crate pickups (v0.70): a lattice tower with a crate on top and a lifting ring above it at hook height.
+  crates=(f.crates||[]).map(c=>{const g=surfaceGroup(c.normal,1.2);for(const [x,z] of [[-.9,-.9],[.9,-.9],[-.9,.9],[.9,.9]])box(g,.18,5.6,.18,x,2.8,z,m.rope);
+   for(let y=1.2;y<5.4;y+=1.4){box(g,1.95,.1,.1,0,y,-.9,m.rope);box(g,1.95,.1,.1,0,y,.9,m.rope);box(g,.1,.1,1.95,-.9,y,0,m.rope);box(g,.1,.1,1.95,.9,y,0,m.rope);}
+   box(g,2.6,.2,2.6,0,5.6,0,m.deck);
+   const load=new T.Group();load.position.y=6.35;g.add(load);box(load,1.4,1.3,1.4,0,0,0,m.crate);box(load,1.46,.14,1.46,0,.35,0,m.strap);box(load,1.46,.14,1.46,0,-.35,0,m.strap);
+   const ringY=MAIL_ALT-1.2-6.35;const ring=add(new T.TorusGeometry(.62,.1,6,18),m.ring,load);ring.position.y=ringY;ring.rotation.y=Math.PI/2;
+   for(const [x,z] of [[-.6,-.6],[.6,-.6],[-.6,.6],[.6,.6]]){const a=new T.Vector3(x,.65,z),b=new T.Vector3(0,ringY-.6,0),len=a.distanceTo(b);const r=add(new T.CylinderGeometry(.03,.03,len,4),m.strap,load);r.position.copy(a).add(b).multiplyScalar(.5);r.quaternion.setFromUnitVectors(up,b.clone().sub(a).normalize());}
+   const sign=label('C');sign.material=sign.material.clone();sign.material.color=new T.Color('#ffc27a');sign.position.y=12.4;g.add(sign);
+   const hook=new T.Vector3();g.updateMatrixWorld(true);ring.getWorldPosition(hook);return {...c,g,load,sign,hook,taken:false,carried:false};});
   // Gull flocks.
   flocks=f.flocks.map(fl=>{const birds=[];for(let k=0;k<fl.count;k++){const g=new T.Group();root.add(g);box(g,.35,.3,1.1,0,0,0,m.bird);
     const wings=[-1,1].map(s=>{const p=new T.Group();p.position.x=s*.15;g.add(p);box(p,1.4,.06,.55,s*.7,0,0,m.bird);box(p,.4,.07,.5,s*1.35,0,.02,m.birdTip);return p;});g.scale.setScalar(1.7);birds.push({g,wings,off:Math.random()*6});}
@@ -69,7 +78,7 @@ export function createExtras({T,scene,mat,palette,label,hemi,sun,aircraft,baseSk
  function clear(){
   if(root){scene.remove(root);root.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material&&!Object.values(m).includes(o.material)&&!Array.isArray(o.material)&&o.material!==palette.white){o.material.map?.dispose();o.material.dispose();}});}
   if(lamp){aircraft.remove(lamp);lamp.dispose?.();lamp=null;}
-  root=null;fuelHoops=[];rings=[];boats=[];socks=[];streaks=[];masts=[];flocks=[];storms=[];urgent=[];sparks=[];feathers=[];stars=null;streak=0;lastRing=-99;ringsTaken=0;birdHits=0;inStorm=0;flash=0;glow=0;stormNotice=-99;lateAnnounced=new Set();mailTaken=0;buffet={turn:0,climb:0};
+  crates=[];root=null;fuelHoops=[];rings=[];boats=[];socks=[];streaks=[];masts=[];flocks=[];storms=[];urgent=[];sparks=[];feathers=[];stars=null;streak=0;lastRing=-99;ringsTaken=0;birdHits=0;inStorm=0;flash=0;glow=0;stormNotice=-99;lateAnnounced=new Set();mailTaken=0;buffet={turn:0,climb:0};
   applySky(0);f=null;
  }
  function applySky(u){const s=skyAt(u);scene.background.setRGB(...s.bg);scene.fog.color.setRGB(...s.bg);sun.intensity=s.sun;sun.color.setRGB(...s.sunColor);hemi.intensity=Math.max(.35,s.hemi-inStorm*1.3)+flash*4;if(inStorm>0){const k=inStorm*.55;scene.background.lerp(gloom,k);scene.fog.color.lerp(gloom,k);}glow=s.glow;
@@ -103,6 +112,9 @@ export function createExtras({T,scene,mat,palette,label,hemi,sun,aircraft,baseSk
   // Mailbags.
   for(const mm of masts){if(mm.taken)continue;mm.bag.rotation.y+=dt;mm.sign.scale.setScalar(4+Math.sin(time*3)*.3);
    if(ctx.active&&ctx.hookWorld&&ctx.hookWorld.distanceTo(mm.hook)<2.6){mm.taken=true;mailTaken++;mm.bag.visible=false;mm.sign.material=mm.sign.material.clone();mm.sign.material.opacity=.35;mm.sign.material.transparent=true;spark(mm.hook);events.push({type:'mail',left:masts.length-mailTaken});}}
+  // Crates: hook the ring to lift the crate; it then hangs under the hook until released.
+  for(const c of crates){if(!c.taken){c.sign.scale.setScalar(4+Math.sin(time*3)*.3);if(ctx.active&&ctx.hookWorld&&ctx.hookWorld.distanceTo(c.hook)<2.6){c.taken=c.carried=true;c.sign.visible=false;root.attach(c.load);spark(c.hook);events.push({type:'crate',goods:c.goods});}}
+   if(c.carried){const at=ctx.hookWorld||tmp.copy(planeWorld).addScaledVector(state.normal,-1.6);c.load.position.copy(at).addScaledVector(state.normal,-(MAIL_ALT-1.2-6.35)-.1);c.load.quaternion.setFromUnitVectors(up,state.normal);}}
   // Gulls: fly in formation, scatter when struck.
   for(const fl of flocks){fl.cooldown=Math.max(0,fl.cooldown-dt);fl.scatter=Math.max(0,fl.scatter-dt);const pos=flockBirds(fl,time);
    fl.birds.forEach((b,k)=>{const p=pos[k];orient(b.g,p.normal,p.altitude,p.forward);if(fl.scatter>0){const s=(1.6-fl.scatter)*9;b.g.position.add(tmp.set(Math.sin(k*2.1),Math.cos(k*1.3)*.5+.6,Math.cos(k*2.7)).multiplyScalar(s));}
@@ -139,6 +151,7 @@ export function createExtras({T,scene,mat,palette,label,hemi,sun,aircraft,baseSk
   if(f.wind){const w=windAt(f.wind,state.normal,t),right=tmp.crossVectors(state.forward,state.normal);const ang=Math.atan2(w.dot(right),w.dot(state.forward))*180/Math.PI;parts.push(`WIND <i class="windarrow" style="transform:rotate(${ang.toFixed(0)}deg)">↑</i> ${Math.round(w.length()*3)} KT`);}
   for(const u of urgent){if(u.stop.done)continue;const left=urgentLeft(u.stop.urgent,t);parts.push(left>0?`<em class="${left<20?'hot':''}">URGENT ${u.stop.goods.toUpperCase()} ${formatClock(left)}</em>`:'<em>URGENT · LATE</em>');}
   if(masts.length)parts.push(`MAILBAGS ${mailTaken}/${masts.length}`);
+  for(const c of crates)parts.push(c.carried?'<em>CRATE ON THE HOOK · SPACE TO DROP IT ON THE PAD</em>':c.taken?'CRATE DELIVERED':'CRATE AWAITING PICKUP');
   if(inStorm>0)parts.push('<em class="hot">TURBULENCE</em>');
   return parts.join(' · ');
  }
@@ -148,16 +161,20 @@ export function createExtras({T,scene,mat,palette,label,hemi,sun,aircraft,baseSk
   if(route.complete){let best=null,bd=Infinity;for(const mm of masts){if(mm.taken)continue;const d=mm.normal.distanceTo(state.normal);if(d<bd){bd=d;best=mm;}}if(best)return {name:'Mailbag mast · lower your hook (mouse wheel) through the bag',normal:best.normal};}
   return null;
  }
- function markers(){const out=[];for(const h of fuelHoops)out.push({normal:h.normal,color:'#5fe39a',label:'F'});for(const mm of masts)if(!mm.taken)out.push({normal:mm.normal,color:'#ffffff',label:'M'});for(const st of storms)out.push({normal:st.center,kind:'storm',size:st.radius});
+ function markers(){const out=[];for(const c of crates)if(!c.taken)out.push({normal:c.normal,color:'#ffc27a',label:'C'});for(const h of fuelHoops)out.push({normal:h.normal,color:'#5fe39a',label:'F'});for(const mm of masts)if(!mm.taken)out.push({normal:mm.normal,color:'#ffffff',label:'M'});for(const st of storms)out.push({normal:st.center,kind:'storm',size:st.radius});
   let shown=0;for(const r of rings){if(r.taken)continue;out.push({normal:r.normal,color:'#ffd36a',kind:'dot'});if(++shown>=6)break;}return out;}
  function summary(){if(!f)return '';const s=[];if(rings.length)s.push(`Rings ${ringsTaken}/${rings.length}.`);if(masts.length)s.push(`Mailbags ${mailTaken}/${masts.length}.`);if(flocks.length)s.push(birdHits?`Bird strikes ${birdHits}.`:'No bird strikes.');
   for(const u of urgent)s.push(lateAnnounced.has(u.stop)?`${u.stop.goods} arrived late.`:`${u.stop.goods} right on time +150.`);return s.join(' ');}
  // Solid things to crash into: mail masts.
- function obstacles(){return masts.map(mm=>({normal:mm.normal,top:13.2,radius:1.1,name:'a mail mast'}));}
+ function obstacles(){return [...masts.map(mm=>({normal:mm.normal,top:13.2,radius:1.1,name:'a mail mast'})),...crates.map(c=>({normal:c.normal,top:c.taken?7:8.4,radius:1.7,name:'a crate tower'}))];}
+ // Career navigation helpers (v0.70).
+ function crateTarget(){const c=crates.find(c=>!c.taken);return c?{name:'Crate pickup · lower your hook (mouse wheel) through the ring',normal:c.normal}:null;}
+ function mastTargets(){return masts.filter(mm=>!mm.taken).map(mm=>({name:'Mailbag mast · lower your hook (mouse wheel) through the bag',normal:mm.normal}));}
+ function releaseCrate(){const c=crates.find(c=>c.carried);if(!c)return null;c.carried=false;c.load.visible=false;return c;}
  function nearestFuel(normal){let best=null,bd=Infinity;for(const h of fuelHoops){const d=h.normal.distanceTo(normal);if(d<bd){bd=d;best=h;}}return best;}
  // World positions of hook targets and birds (used by automated play tests).
  function targets(){return {hooks:masts.map(mm=>mm.hook.clone()),birds:flocks.flatMap(fl=>fl.birds.map(b=>b.g.position.clone())),storms:storms.map(st=>st.center.clone()),urgent:urgent.map(u=>u.sprite.visible)};}
  // Seconds until a parcel dropped now would land (null hides the boat lead markers).
  function setLead(seconds){leadTime=seconds;}
- return {start,clear,update,setLead,status,navTarget,markers,summary,targets,obstacles,nearestFuel,get wind(){return f?.wind||null;},get buffet(){return buffet;},get mailLeft(){return masts.length-mailTaken;},get hasMail(){return masts.length>0;},get windy(){return !!f?.wind;}};
+ return {crateTarget,mastTargets,releaseCrate,get carrying(){return crates.some(c=>c.carried);},start,clear,update,setLead,status,navTarget,markers,summary,targets,obstacles,nearestFuel,get wind(){return f?.wind||null;},get buffet(){return buffet;},get mailLeft(){return masts.length-mailTaken;},get hasMail(){return masts.length>0;},get windy(){return !!f?.wind;}};
 }

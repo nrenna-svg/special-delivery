@@ -4,13 +4,15 @@
 // Runway coordinates: z = distance along the runway's great circle (the takeoff direction is -Z),
 // x = sideways distance from the centerline; both in world units, matching takeoff.js.
 import {RADIUS} from './flight.js';
-import {GROUND_ALT,PARKED_PITCH} from './takeoff.js';
+import {PARKED_PITCH} from './takeoff.js';
+import {GROUND_ALT,RING_Z,RING_ALT,RING_RADIUS} from './airfield.js';
 
-export const GATE_Z=48, GATE_ALT=9, GATE_RADIUS=6;
-export const TOUCH_Z=8, STOP_Z=-6, TOUCH_SPEED=11, BOUNCE_TIME=.7, PARKED_TIME=3.2;
+// v0.70: the long curved runway (airfield.js) — wheels ride at GROUND_ALT along its whole length.
+export const GATE_Z=RING_Z, GATE_ALT=RING_ALT, GATE_RADIUS=RING_RADIUS;
+export const TOUCH_Z=24, STOP_Z=-4, TOUCH_SPEED=11, BOUNCE_TIME=.7, PARKED_TIME=3.2;
 const PIVOT=RADIUS+GROUND_ALT;
 const smooth=u=>{u=Math.max(0,Math.min(1,u));return u*u*(3-2*u);}, smoothSlope=u=>u<0||u>1?0:6*u*(1-u);
-function runwayBump(z){const c=Math.max(-12,Math.min(12,z));return Math.sqrt(PIVOT*PIVOT+c*c)-PIVOT;}
+function runwayBump(){return 0;}
 
 export function toRunway(n){return {x:Math.asin(Math.max(-1,Math.min(1,n.x)))*PIVOT,z:Math.atan2(n.z,n.y)*PIVOT};}
 export function runwayNormal(x,z,out){const a=x/PIVOT,b=z/PIVOT;return out.set(Math.sin(a),Math.cos(a)*Math.cos(b),Math.cos(a)*Math.sin(b));}

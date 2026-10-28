@@ -1,12 +1,15 @@
 import { Vector3, Quaternion } from './vendor/three.core.js';
 // Planet radius in world units (was 150 before v0.56; everything else is placed relative to it).
-export const RADIUS=200;
+export const RADIUS=270; // v0.70: grown another 35% (150 → 200 in v0.56 → 270)
 // Vertical rate is scaled so W/S give a controllable climb (≈35-45 m/s on the HUD)
 // instead of jumping hundreds of meters in a few seconds. Cargo uses the same rate.
 export const CLIMB_RATE=.5;
 // How strongly climbing bleeds (and diving builds) airspeed, so the gauge visibly responds.
 export const PITCH_SPEED_COST=8;
-export function verticalSpeed(s){return Math.sin(s.pitch)*s.speed*CLIMB_RATE;}
+// v0.70: below SLOW_SPEED the wings run out of lift and the plane settles gently, so cutting the
+// throttle over the runway lets you sink onto it for a landing (stunts are exempt).
+export const SLOW_SPEED=16, SLOW_SINK=.08;
+export function verticalSpeed(s){return Math.sin(s.pitch)*s.speed*CLIMB_RATE-(s.stunt?0:Math.max(0,SLOW_SPEED-s.speed)*SLOW_SINK);}
 // Fuel use in percent per second: idle burn, more with throttle, and boost is thirsty.
 // Tuned for the larger planet (v0.56): a full tank lasts about six minutes at cruise.
 export function fuelBurn(throttle,boost){return .17+throttle*.32+(boost?1.45:0);}

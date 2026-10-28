@@ -1,8 +1,19 @@
-# Special Delivery — v0.68
+# Special Delivery — v0.70
 
 Around the world. Right on time.
 
 A separate tiny-planet delivery prototype; the original 2D BI-PLANE BATTLE is unchanged. Static HTML/JS, no build step. Serve dist/ over HTTP. Three.js 0.180.0 is vendored with its MIT license.
+
+## Career mode (v0.70, the game now)
+The game starts inside the Kestrel Courier Co. hangar on the home island. A corkboard job board offers four jobs; pick one and take it. The hangar doors slide open, the plane taxis out, turns onto the long runway and takes off (Space skips). Fly the job, come home and land: either touch down on the runway yourself for a cash bonus, or fly through the gold ring off the runway's +z end for an automatic landing with no bonus. The plane is towed back into the hangar and a pay ledger shows what you earned.
+- Job types (career.js `JOB_TYPES`): parcel run (2-4 drops), crate haul (hook a crate off a tower with the hook line, then drop it on its pad), mail pickup (snag mailbags off masts), urgent medicine (one drop against the clock), boat supply (one drop on a moving boat plus one on the dock).
+- Island danger tiers (career.js `TIERS`, `ISLAND_TIER`): CALM (Homeward Isles, Emerald Reach, Western Reach) ×1 pay, a crash costs repairs; BREEZY (Eastern Wilds, Lighthouse Coast) ×1.7, wind and gulls; ROUGH (Coral Keys, Southern Atolls, Orchid Isle) ×2.6, storms and waterspouts, a crash fails the job and the client pays nothing; DEADLY (Puffin Rocks, Sunset Archipelago) ×4, the worst weather, and a crash out there ends the whole career run. Pay also scales with distance.
+- Pay: each objective pays an equal share of the job, scaled by drop accuracy and cargo condition (urgent on time ×1.4). Finishing everything adds 15%. A manual landing adds 15-70% on top, graded GREASED IT / FIRM / BOUNCY, +10% if centered. Repairs are deducted per crash. Cash, jobs done and career earnings are saved in localStorage (`special-delivery-career`, best career in `-best`).
+- Manual landing (airfield.js `gradeTouchdown`): touch down on the runway with sink ≤ 26 m/s, speed ≤ 72 kt, wings level and lined up with the runway (either direction). Below 48 kt the plane settles on its own (flight.js `SLOW_SPEED`/`SLOW_SINK`), so the easy way down is: line up, throttle back, let it sink. An approach readout (speed, sink, line-up) appears near the runway. After touchdown the plane brakes to a stop; overrunning the end is a crash.
+- Calling off a flight (the footer button) tows you home with no pay.
+- Endless Run and Training Days are hidden, not deleted: set `LEGACY_MODES=true` in game.js to bring the old menus back (they have not been re-checked since the world and runway changed).
+- World: planet radius 270 (was 200; grown 35% again). The home island is bigger (size 62) to fit a 66-unit runway that follows the planet's curve, an apron and the quonset hangar (hangar.js builds the scenery; airfield.js has the runway frame, rollout path and landing rules).
+- Automated tests can read live state through `window.__sd` (read-only hooks).
 
 ## Controls
 - Mouse: steer. The cursor's offset from screen center banks left/right and climbs/dives (mouse up = nose up); a dashed ring marks the dead zone and a crosshair follows the cursor. Steering starts on the first mouse move after takeoff, resume or landing.

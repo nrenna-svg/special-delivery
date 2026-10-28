@@ -12,9 +12,10 @@ export const STOP_DATA=[
 // specs: optional [{name,goods,color,normal}] from days.js; defaults to the original Kestrel route.
 export function newRoute(specs=null){const stops=specs?specs.map((s,i)=>({...s,id:i,normal:s.normal.clone(),done:false})):STOP_DATA.map((s,i)=>({...s,id:i,normal:new Vector3(s.x,1,s.z).normalize(),done:false}));return {stops,parcels:12,drops:0,delivered:0,score:0,condition:100,elapsed:0,complete:false};}
 export const RELEASE_DELAY=.65, CHUTE_DELAY=1, INFLATION_TIME=.45;
-export function makeParcel(s){return {position:s.normal.clone().multiplyScalar(RADIUS+s.altitude-1),velocity:s.forward.clone().multiplyScalar(s.speed*Math.cos(s.pitch)).addScaledVector(s.normal,verticalSpeed(s)-1),age:0,inflation:0,broken:false};}
+// opts.chuteDelay: seconds before the chute opens (crates hang low on the hook, so theirs opens at once).
+export function makeParcel(s,opts={}){return {chuteDelay:opts.chuteDelay??CHUTE_DELAY,position:s.normal.clone().multiplyScalar(RADIUS+s.altitude-1),velocity:s.forward.clone().multiplyScalar(s.speed*Math.cos(s.pitch)).addScaledVector(s.normal,verticalSpeed(s)-1),age:0,inflation:0,broken:false};}
 export function stepParcel(p,dt){
- p.age+=dt;p.inflation=Math.max(0,Math.min(1,(p.age-CHUTE_DELAY)/INFLATION_TIME));
+ p.age+=dt;p.inflation=Math.max(0,Math.min(1,(p.age-(p.chuteDelay??CHUTE_DELAY))/INFLATION_TIME));
  const normal=p.position.clone().normalize();p.velocity.addScaledVector(normal,-12*dt);
  if(p.inflation>0){const radial=p.velocity.dot(normal),tangent=p.velocity.clone().addScaledVector(normal,-radial);const vertical=radial+(-3.2-radial)*(1-Math.exp(-8*p.inflation*dt));const w=p.wind?windAt(p.wind,normal,p.windTime||0):null;const keep=Math.exp(-.55*p.inflation*dt);if(w)tangent.sub(w);tangent.multiplyScalar(keep);if(w)tangent.add(w);p.velocity.copy(tangent).addScaledVector(normal,vertical);}
  p.position.addScaledVector(p.velocity,dt);
@@ -24,7 +25,7 @@ export function stepParcel(p,dt){
 }
 export function releaseState(s){const copy={...s,normal:s.normal.clone(),forward:s.forward.clone(),stunt:null};for(let t=0;t<RELEASE_DELAY;t+=1/120)advance(copy,{turn:s.bank/.82,climb:s.pitch/.48},Math.min(1/120,RELEASE_DELAY-t));return copy;}
 // wind: optional day wind (see challenges.js), applied with gusts frozen at windTime.
-export function predictDrop(s,wind=null,windTime=0){const p=makeParcel(releaseState(s));p.wind=wind;p.windTime=windTime;for(let i=0;i<6000;i++){if(stepParcel(p,1/120))return {position:p.position.normalize().multiplyScalar(IMPACT_RADIUS+.08),broken:p.broken,time:RELEASE_DELAY+(i+1)/120};}return null;}
+export function predictDrop(s,wind=null,windTime=0,opts={}){const p=makeParcel(releaseState(s),opts);p.wind=wind;p.windTime=windTime;for(let i=0;i<6000;i++){if(stepParcel(p,1/120))return {position:p.position.normalize().multiplyScalar(IMPACT_RADIUS+.08),broken:p.broken,time:RELEASE_DELAY+(i+1)/120};}return null;}
 export function predictImpact(s){return predictDrop(s)?.position||null;}
 export function safeDropAltitude(s){const released=releaseState({...s,altitude:60});let velocity=Math.min(0,verticalSpeed(released))-1,fall=0;for(let age=0;age<4;age+=1/120){const inflation=Math.max(0,Math.min(1,(age-CHUTE_DELAY)/INFLATION_TIME));velocity-=12/120;if(inflation)velocity+=(-3.2-velocity)*(1-Math.exp(-8*inflation/120));fall-=velocity/120;if(inflation>=.95&&-velocity<=5.5)break;}return Math.ceil(3.5+fall+Math.max(0,60-released.altitude)+2);}
 export const PAD_RADIUS=8, BOAT_PAD_RADIUS=13;
@@ -32,8 +33,9 @@ export const PAD_RADIUS=8, BOAT_PAD_RADIUS=13;
 export const padRadius=s=>s.motion?BOAT_PAD_RADIUS:PAD_RADIUS;
 // The open (undelivered) stop a landing point falls on, or null. Does not change the route.
 // at: optional route time to check against (moving boat stops are checked where they will be).
-export function padAt(route,position,at=null){const n=position.clone().normalize();for(const s of route.stops){if(s.done)continue;const sn=at===null?s.normal:stopNormalAt(s,at);if(Math.acos(Math.max(-1,Math.min(1,sn.dot(n))))*IMPACT_RADIUS<=padRadius(s))return s;}return null;}
-export function resolveDelivery(route,position,parcel){if(parcel?.broken)return null;let closest=null,distance=Infinity;for(const s of route.stops){if(s.done)continue;const d=Math.acos(Math.max(-1,Math.min(1,s.normal.dot(position.clone().normalize()))))*IMPACT_RADIUS;if(d>padRadius(s))continue;if(d/padRadius(s)<(closest?distance/padRadius(closest):Infinity)){distance=d;closest=s;}}
+// kind: 'parcel' (default) or 'crate'; a stop only accepts its own kind of cargo.
+export function padAt(route,position,at=null,kind='parcel'){const n=position.clone().normalize();for(const s of route.stops){if(s.done||(s.kind||'parcel')!==kind)continue;const sn=at===null?s.normal:stopNormalAt(s,at);if(Math.acos(Math.max(-1,Math.min(1,sn.dot(n))))*IMPACT_RADIUS<=padRadius(s))return s;}return null;}
+export function resolveDelivery(route,position,parcel){if(parcel?.broken)return null;let closest=null,distance=Infinity;const kind=parcel?.kind||'parcel';for(const s of route.stops){if(s.done||(s.kind||'parcel')!==kind)continue;const d=Math.acos(Math.max(-1,Math.min(1,s.normal.dot(position.clone().normalize()))))*IMPACT_RADIUS;if(d>padRadius(s))continue;if(d/padRadius(s)<(closest?distance/padRadius(closest):Infinity)){distance=d;closest=s;}}
  if(!closest)return null;
  closest.done=true;route.delivered++;const accuracy=Math.max(0,Math.round(100*(1-distance/padRadius(closest))));let points=100+accuracy+Math.round(route.condition);
  // Urgent parcels earn a bonus when delivered before their clock runs out.

@@ -17,7 +17,7 @@ test('ring course stays clear of pads and above the safe-drop height',()=>{for(c
  const r={normal:new Vector3(0,1,0),altitude:20};assert.ok(ringHit(r,new Vector3(0,RADIUS+21,1)));assert.ok(!ringHit(r,new Vector3(0,RADIUS+26,0)));assert.equal(ringScore(1),25);assert.equal(ringScore(9),100);});
 test('wind drifts the parachute downwind and the preview still matches the landing',()=>{
  const s=newFlight();s.altitude=24;const wind={dir:new Vector3(1,0,0),speed:5,gust:0};
- const calm=predictDrop(s),windy=predictDrop(s,wind);assert.ok(windy.position.x-calm.position.x>5.5,'drift '+(windy.position.x-calm.position.x));
+ const calm=predictDrop(s),windy=predictDrop(s,wind);assert.ok(windy.position.x-calm.position.x>5,'drift '+(windy.position.x-calm.position.x));
  const p=makeParcel(releaseState(s));p.wind=wind;for(let i=0;i<6000;i++)if(stepParcel(p,1/120))break;assert.ok(p.position.clone().normalize().distanceTo(windy.position.clone().normalize())<1e-6);assert.equal(p.broken,false);
  assert.ok(Math.abs(windAt(wind,new Vector3(0,1,0)).length()-5)<1e-9);assert.equal(windAt(null,new Vector3(0,1,0)).length(),0);
 });

@@ -5,11 +5,11 @@
 import {Vector3,Quaternion} from './vendor/three.core.js';
 import {RADIUS} from './flight.js';
 import {boatNormal,ringCourse,slerpNormal,offsetNormal,toNormal} from './challenges.js';
-import {HANDOFF_Z,GROUND_ALT} from './takeoff.js';
+import {HANDOFF_Z,GROUND_ALT} from './airfield.js';
 import {GATE_Z} from './landing.js';
 
 export const ISLANDS=[
- {label:'KESTREL ISLAND',n:[0,1,-.165],size:45},
+ {label:'KESTREL ISLAND',n:[0,1,-.06],size:62}, // v0.70: home island grown to hold the long runway and hangar
  {label:'THE EMERALD REACH',n:[.42,.42,-1],size:44},
  {label:'SOUTHERN ATOLLS',n:[-.2,-.6,-1],size:38},
  {label:'SUNSET ARCHIPELAGO',n:[.1,-1,.15],size:49},
