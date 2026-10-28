@@ -6,7 +6,7 @@ import {floorAt,landAt,terrainCheck,obstacleHit,pickRespawn,LIGHTHOUSE,WATER_FLO
 import {DAYS,dayStops,dayFeatures,islandNormal} from '../dist/days.js';
 const arc=(a,b)=>Math.acos(Math.max(-1,Math.min(1,a.dot(b))))*RADIUS;
 
-test('fuel lasts several minutes at cruise and boost is expensive',()=>{const cruise=100/fuelBurn(8/26,false);assert.ok(cruise>300&&cruise<450,'cruise '+cruise);assert.ok(fuelBurn(.3,true)>4*fuelBurn(.3,false));});
+test('a stock tank lasts about three minutes at cruise and boost is expensive',()=>{const cruise=100/fuelBurn(8/26,false);assert.ok(cruise>150&&cruise<225,'cruise '+cruise);assert.ok(fuelBurn(.3,true)>4*fuelBurn(.3,false));});
 test('engine out glides down slowly instead of dropping',()=>{const s=newFlight();s.altitude=20;let t=0;while(s.altitude>1&&t<60){advance(s,{engineOut:true,climb:1,floor:0},1/60);t+=1/60;}assert.ok(t>6&&t<40,'glide '+t);assert.ok(s.speed<16);});
 test('the floor is the old 7 by default and can be lowered',()=>{const a=newFlight(),b=newFlight();for(let i=0;i<1200;i++){advance(a,{climb:-1},1/60);advance(b,{climb:-1,floor:0},1/60);}assert.equal(a.altitude,7);assert.equal(b.altitude,0);});
 test('land, beach and sea floors, obstacles and warnings',()=>{

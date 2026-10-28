@@ -15,7 +15,10 @@ export const perfOf=s=>s.perf||STOCK;
 export function verticalSpeed(s){const p=perfOf(s);return Math.sin(s.pitch)*s.speed*CLIMB_RATE*p.climb-(s.stunt?0:Math.max(0,p.slow-s.speed)*SLOW_SINK);}
 // Fuel use in percent per second: idle burn, more with throttle, and boost is thirsty.
 // Tuned for the larger planet (v0.56): a full tank lasts about six minutes at cruise.
-export function fuelBurn(throttle,boost,perf=null){return (.17+throttle*.32+(boost?1.45:0))/(perf?.tank||1);}
+// v0.82 tuning: FUEL_SCALE doubles the burn so range matters on hard jobs (a stock tank lasts about
+// 3 minutes at cruise, roughly 3,300 world units: a DEADLY 3-island run needs most of it).
+export const FUEL_SCALE=2;
+export function fuelBurn(throttle,boost,perf=null){return FUEL_SCALE*(.17+throttle*.32+(boost?1.45:0))/(perf?.tank||1);}
 export function newFlight(){return {normal:new Vector3(0,1,0),forward:new Vector3(0,0,-1),altitude:17,speed:23,throttle:.5,fuel:100,bank:0,pitch:0,roll:0,stunt:null,cooldown:0,distance:0,time:0};}
 export function startStunt(s,type,direction=1){
  if(s.stunt||s.cooldown>0)return 'Let the plane settle first.';

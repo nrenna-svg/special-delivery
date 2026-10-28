@@ -19,7 +19,7 @@ export const PARTS=[
  {id:'engine',name:'Engine',icon:'⚙',rank:0,unlock:600,base:1500,blurb:'More power: higher cruise speed and quicker acceleration.',
   per:{speed:.05,accel:.08},show:[['speed','Top speed',v=>`${Math.round(36*v*3)} kt`]]},
  {id:'fuel',name:'Fuel tank',icon:'⛽',rank:0,unlock:500,base:1200,blurb:'A bigger tank. Every level adds about 10% more flying time.',
-  per:{tank:.1},show:[['tank','Flying time',v=>`${(6*v).toFixed(1)} min`]]},
+  per:{tank:.12},show:[['tank','Flying time',v=>`${(3.1*v).toFixed(1)} min`]]},
  {id:'cargo',name:'Cargo hold',icon:'📦',rank:0,unlock:400,base:900,blurb:'One more spare parcel aboard per level, for when a drop goes wrong.',
   per:{spares:1},show:[['spares','Spare parcels',v=>`+${v}`]]},
  {id:'wings',name:'Wings',icon:'🪽',rank:1,unlock:3000,base:1800,blurb:'More lift: faster climbs, a higher ceiling, and you can fly slower before sinking.',

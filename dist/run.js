@@ -3,7 +3,9 @@
 // unlocks more islands, adds parcels, shortens the slack in the clock and brings in more of the
 // hazards from the training days. Pure planning logic; game.js plays the plans.
 import {Vector3} from './vendor/three.core.js';
-import {RADIUS,fuelBurn} from './flight.js';
+import {RADIUS,fuelBurn,FUEL_SCALE} from './flight.js';
+// Legacy endless-run planning keeps the pre-v0.82 tank (career mode doubled the burn with FUEL_SCALE).
+const legacyBurn=(t,b)=>fuelBurn(t,b)/FUEL_SCALE;
 import {DAYS,ISLANDS,dayStops,buildFeatures,homeStart,homeGate,islandPoint} from './days.js';
 
 const arc=(a,b)=>Math.acos(Math.max(-1,Math.min(1,a.dot(b))))*RADIUS;
@@ -18,7 +20,7 @@ const FUEL_SPOTS=DAYS.flatMap(d=>d.features?.fuel||[]);
 export function rng(seed){let a=seed>>>0;return ()=>{a=(a+0x6D2B79F5)>>>0;let t=a;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return ((t^t>>>14)>>>0)/4294967296;};}
 export const quotaFor=day=>Math.min(7,day+1);
 export const fuelHoopsFor=day=>Math.max(1,Math.min(FUEL_SPOTS.length,FUEL_SPOTS.length-(day-2)));
-export const TANK_SECONDS=100/fuelBurn(8/26,false);
+export const TANK_SECONDS=100/legacyBurn(8/26,false);
 export const unlockedIslands=day=>ISLAND_ORDER.slice(0,Math.min(ISLAND_ORDER.length,day===1?1:day*2-2));
 // Share of the estimated route time added as slack; the clock gets tighter as days go on.
 export const slackFor=day=>Math.max(1.32,2.3-day*.12);
@@ -85,4 +87,4 @@ export function previewFor(day){
 }
 // 6:00 AM at the start of the day to 10:00 PM at nightfall.
 export function clockText(elapsed,dayLength){const mins=360+Math.min(1,elapsed/dayLength)*960,h=Math.floor(mins/60),m=Math.floor(mins%60);return `${(h+11)%12+1}:${String(m).padStart(2,'0')} ${h<12?'AM':'PM'}`;}
-export const fuelForDay=dayLength=>dayLength/(100/fuelBurn(8/26,false));
+export const fuelForDay=dayLength=>dayLength/(100/legacyBurn(8/26,false));

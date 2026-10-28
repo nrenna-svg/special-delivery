@@ -13,7 +13,7 @@ test('locked parts need the rank, then the unlock fee, then level prices',()=>{c
  assert.equal(nextAction(c,'wings').kind,'upgrade');const before=c.cash;assert.ok(buy(c,'wings'));assert.equal(before-c.cash,levelCost(PART.wings,1));
  const poor=career({cash:10});assert.equal(nextAction(poor,'engine').ok,false);assert.equal(buy(poor,'engine'),false);});
 test('maxing a part is a modest gain, never a huge one',()=>{const c=career();for(const p of PARTS)c.parts[p.id]={unlocked:true,level:MAX_LEVEL};const s=stats(c);
- for(const k of ['speed','tank','climb','turn'])assert.ok(s[k]/BASE[k]>1.15&&s[k]/BASE[k]<1.55,k);assert.equal(s.spares,5);assert.ok(s.chute<1&&s.chute>=.5);});
+ for(const k of ['speed','tank','climb','turn'])assert.ok(s[k]/BASE[k]>1.15&&s[k]/BASE[k]<1.65,k);assert.equal(s.spares,5);assert.ok(s.chute<1&&s.chute>=.5);});
 test('engine upgrades make the plane faster, the tank makes fuel last longer',()=>{const fly=perf=>{const s=newFlight();s.perf=perf;s.throttle=1;for(let i=0;i<600;i++)advance(s,{},1/60);return s.speed;};
  const c=career();c.parts.engine={unlocked:true,level:5};assert.ok(fly(stats(c))>fly(stats(career()))*1.2);
  const t=career();t.parts.fuel={unlocked:true,level:5};assert.ok(fuelBurn(.5,false,stats(t))<fuelBurn(.5,false)*.7);});

@@ -23,6 +23,7 @@ import {createThreats,RADAR_FLOOR,FLAK_DAMAGE,DODGE_NEAR,DODGE_FAR} from './thre
 import {PARTS,PART,RANKS,MAX_LEVEL,rankOf,nextRank,nextAction,buy,stats,statAfter,partState,newParts,levelCost} from './upgrades.js';
 import {WORLDS,WORLD_ORDER,WORLD,setWorld} from './worlds.js';
 import {CRATE_WEIGHTS} from './career.js';
+import {routeLength} from './career.js';
 import {TIERS,JOB_TYPES,jobBoard,jobRoute,objectivePay,settle,loadCareer,saveCareer,newCareer,loadBestCareer,saveBestCareer,money,allSiteNormals} from './career.js';
 // v0.70: the game is now a career flown from the hangar. Endless Run and Training Days are hidden
 // (their code is kept; set LEGACY_MODES to true to bring the old menus back).
@@ -399,10 +400,10 @@ function careerHud(){devRefill();rankHud();$('cash').textContent=money(career.ca
 function renderBoard(){board=jobBoard(career.boardSeed);selectedJob=Math.max(0,Math.min(selectedJob,board.length-1));const list=$('jobs');list.innerHTML='';
  board.forEach((j,i)=>{const t=TIERS[j.tier],b=document.createElement('button');b.className='job'+(i===selectedJob?' selected':'');b.setAttribute('role','option');b.setAttribute('aria-selected',String(i===selectedJob));
   b.style.setProperty('--tilt',`${((i*37)%5-2)*.45}deg`);b.style.setProperty('--tc',t.color);
-  const need=jobNeeds(j);b.innerHTML=`<span class="type">${JOB_TYPES[j.type].icon} ${j.typeLabel}${j.islands.length>1?` · ${j.islands.length} ISLANDS`:''}</span><span class="where">${titleCase(j.island)}</span><span class="pay">${money(j.pay)}</span><span class="meta"><span class="tier">${t.name}</span>${j.sams.length?`<span class="sam">⚠ ${j.sams.length} SAM${j.flak.length?` + ${j.flak.length} FLAK`:''}</span>`:''}${need?`<span class="need">🔒 ${need}</span>`:''}${j.title} · ${(j.dist/100).toFixed(1)} km</span>`;if(need)b.classList.add('needs');
+  const need=jobNeeds(j),fuelPct=fuelNeed(j);b.innerHTML=`<span class="type">${JOB_TYPES[j.type].icon} ${j.typeLabel}${j.islands.length>1?` · ${j.islands.length} ISLANDS`:''}</span><span class="where">${titleCase(j.island)}</span><span class="pay">${money(j.pay)}</span><span class="meta"><span class="tier">${t.name}</span>${j.sams.length?`<span class="sam">⚠ ${j.sams.length} SAM${j.flak.length?` + ${j.flak.length} FLAK`:''}</span>`:''}${need?`<span class="need">🔒 ${need}</span>`:''}${fuelPct>95?`<span class="sam">⛽ ${fuelPct}% FUEL</span>`:''}${j.title} · ${(j.dist/100).toFixed(1)} km</span>`;if(need)b.classList.add('needs');
   b.onclick=()=>{selectedJob=i;renderBoard();};b.ondblclick=()=>{selectedJob=i;takeJob();};list.appendChild(b);});
  const j=board[selectedJob],t=TIERS[j.tier];$('jobinfo').style.setProperty('--tc',t.color);
- const need=jobNeeds(j);$('jobinfo').innerHTML=`<b>${j.typeLabel} · ${j.islands.map(titleCase).join(' → ')}</b><br>${j.how}${j.sams.length?`<br><b>AIR DEFENCES:</b> ${j.sams.length} missile site${j.sams.length>1?'s':''}${j.flak.length?` and ${j.flak.length} flak gun${j.flak.length>1?'s':''}`:''}. Fly below ${RADAR_FLOOR*10} m to hide from radar, barrel roll (Q/E) when a missile is ${DODGE_FAR*10} m out${partState(career,'flares').unlocked?`, or press C for flares (${perf.flares} per flight)`:' (a flare dispenser from the Plane Shop helps a lot)'}. A missile hit is a crash.`:''}<br><span class="risk">${t.name}: ${t.risk}</span>${need?`<br><span class="risk" style="--tc:#ff8a7a">🔒 ${need}: buy it in the Plane Shop.</span>`:''}`;$('takejob').disabled=!!need;}
+ const need=jobNeeds(j),fuel=fuelNeed(j);$('jobinfo').innerHTML=`<b>${j.typeLabel} · ${j.islands.map(titleCase).join(' → ')}</b><br>${j.how}<br><b>FUEL:</b> about ${fuel}% of your tank${fuel>95?' · <span class="risk" style="--tc:#ff8a7a">you may not make it back: upgrade the fuel tank or fly very efficiently</span>':fuel>70?' · tight, so go easy on the boost':''}${j.sams.length?`<br><b>AIR DEFENCES:</b> ${j.sams.length} missile site${j.sams.length>1?'s':''}${j.flak.length?` and ${j.flak.length} flak gun${j.flak.length>1?'s':''}`:''}. Fly below ${RADAR_FLOOR*10} m to hide from radar, barrel roll (Q/E) when a missile is ${DODGE_FAR*10} m out${partState(career,'flares').unlocked?`, or press C for flares (${perf.flares} per flight)`:' (a flare dispenser from the Plane Shop helps a lot)'}. A missile hit is a crash.`:''}<br><span class="risk">${t.name}: ${t.risk}</span>${need?`<br><span class="risk" style="--tc:#ff8a7a">🔒 ${need}: buy it in the Plane Shop.</span>`:''}`;$('takejob').disabled=!!need;}
 function showLedger(d){$('board').hidden=true;$('ledger').hidden=false;$('ledgertitle').textContent=d.title;$('ledgerhead').textContent=d.head;
  $('ledgerlines').innerHTML=d.lines.map(l=>`<div><span>${l.label}</span><b class="${l.amount<0?'neg':'pos'}">${money(l.amount)}</b></div>`).join('')+`<div class="total"><span>${d.totalLabel}</span><span>${money(d.total)}</span></div>`+(d.note?`<p>${d.note}</p>`:'');
  $('ledgerok').innerHTML=d.over?'START A NEW CAREER <span>↗</span>':'BACK TO THE BOARD <span>↗</span>';
@@ -414,7 +415,7 @@ function enterHangar(ledger=null){job=null;reset();mode='hangar';releaseMouse();
  depot.visible=LEGACY_MODES;{const b=document.querySelector('.hgbar .brand div');b.firstChild.nodeValue=IN_DESERT?'DUSTWATER COURIER CO.':'KESTREL COURIER CO.';b.querySelector('small').textContent=`HANGAR · ${HERE.name.toUpperCase()}`;$('boardsub').textContent=IN_DESERT?'Pick a job. Higher, harsher mesas pay more.':'Pick a job. Harder islands pay more.';}careerHud();if(ledger)showLedger(ledger);else{$('ledger').hidden=true;$('board').hidden=false;renderBoard();setTab(hangarTab);}}
 function takeJob(){if(mode!=='hangar'||!board[selectedJob]||jobNeeds(board[selectedJob]))return;audio.unlock();job=board[selectedJob];reset();route.parcels=job.parcels+perf.spares;
  $('hangarui').hidden=true;document.body.classList.remove('inhangar');applyRunwayPose(state,rolloutPose(0));state.fuel=100;state.throttle=8/26;$('throttle').value=31;lowFuelStage=0;
- roll.t=0;mode='rollout';$('nextstop').textContent=`${job.typeLabel} · ${titleCase(job.island)}`;$('bearing').textContent='';$('cargo').textContent=`PAYS ${money(job.pay)} · ${TIERS[job.tier].name}`;showPlaying();notify(`${job.typeLabel} · ${job.island} · ${money(job.pay)} · ${TIERS[job.tier].name}${job.tier===3?' · A CRASH OUT THERE ENDS YOUR CAREER':''} · SPACE TO SKIP`);noticeUntil=performance.now()+6500;}
+ roll.t=0;bingoWarned=false;mode='rollout';$('nextstop').textContent=`${job.typeLabel} · ${titleCase(job.island)}`;$('bearing').textContent='';$('cargo').textContent=`PAYS ${money(job.pay)} · ${TIERS[job.tier].name}`;showPlaying();notify(`${job.typeLabel} · ${job.island} · ${money(job.pay)} · ${TIERS[job.tier].name}${job.tier===3?' · A CRASH OUT THERE ENDS YOUR CAREER':''} · SPACE TO SKIP`);noticeUntil=performance.now()+6500;}
 $('takejob').onclick=takeJob;$('reset').innerHTML='↺ CALL OFF FLIGHT';
 // Read-only hooks for automated play tests.
 window.__sd={get mode(){return mode;},get state(){return state;},get route(){return route;},get job(){return job;},get career(){return career;},roll,keys:()=>keys,extras,get hook(){return hookWorld;},get lineLen(){return lineLen;},finishJob:o=>finishJob(o)};
@@ -602,6 +603,14 @@ function threatAlarm(dt){const ts=threats.status;document.body.classList.toggle(
  if(ts.inbound&&lockBeep<=0){lockBeep=Math.max(.07,Math.min(.3,ts.nearest/120));audio.sfx.missileWarn();}
  else if(!ts.inbound&&ts.locking>0&&lockBeep<=0){lockBeep=.5-ts.locking*.38;audio.sfx.lockBeep(ts.locking);}}
 
+// Fuel planning (v0.82): estimated share of the tank a job needs (route length + 25% for drops and
+// manoeuvring, at cruise), and a BINGO FUEL warning once what's left only just gets you home.
+function unitsPerPercent(){return 18/fuelBurn(8/26,false,perf);}
+function fuelNeed(j){return Math.round(routeLength(j)*1.25/unitsPerPercent());}
+let bingoWarned=false;
+function bingoCheck(){if(!job||mode!=='flight'||route.jobDone&&state.normal.y>.97)return;const home=Math.acos(Math.max(-1,Math.min(1,state.normal.y)))*RADIUS,need=home*1.15/unitsPerPercent()+3;
+ if(state.fuel>0&&state.fuel<need){if(!bingoWarned){bingoWarned=true;audio.sfx.lowfuel();notify(`BINGO FUEL · ${Math.ceil(state.fuel)}% LEFT, ABOUT ${Math.ceil(need)}% TO GET HOME · TURN FOR HOME NOW`);noticeUntil=performance.now()+6000;}}else if(state.fuel>need+8)bingoWarned=false;}
+
 function frame(now){requestAnimationFrame(frame);const dt=Math.min((now-last)/1000,.04);last=now;let camHandled=false;
  if(mode==='cutscene')camHandled=updateCutscene(dt);
  else if(mode==='rollout')camHandled=updateRollout(dt);
@@ -613,7 +622,7 @@ function frame(now){requestAnimationFrame(frame);const dt=Math.min((now-last)/10
   const steer=mode==='flight'&&mouse.active,clamp1=v=>Math.max(-1,Math.min(1,v));
   {const w=extras.carryWeight();state.perf=w?{...perf,speed:perf.speed*(1-Math.max(.02,.07*w-.03*(perf.strength-w))),climb:perf.climb*(1-.05*w)}:perf;}
   advance(state,{turn:mode==='flight'?clamp1(Number(!!keys.right)-Number(!!keys.left)+(steer?mouseAxis(mouse.x):0)+extras.buffet.turn+Math.sin(worldTime*8.1)*seaLife.pull(state.normal,worldTime)*1.3):0,climb:mode==='flight'?clamp1(Number(!!keys.up)-Number(!!keys.down)+(steer?mouseAxis(-mouse.y):0)+extras.buffet.climb+Math.sin(worldTime*6.3+1)*seaLife.pull(state.normal,worldTime)):0,boost:mode==='flight'&&keys.boost&&state.fuel>0,throttle:mode==='flight'?(Number(!!keys.faster)-Number(!!keys.slower)):0,engineOut:mode==='flight'&&state.fuel<=0,floor:mode==='flight'?0:7},dt*(mode==='intro'?.28:1));
-  if(mode==='flight'){updateFuelAndTerrain(dt);if(mode==='flight')careerFlight(dt);if(run.pendingNext>0&&(run.pendingNext-=dt)<=0)nextDay();}
+  if(mode==='flight'){updateFuelAndTerrain(dt);if(mode==='flight'){careerFlight(dt);bingoCheck();}if(run.pendingNext>0&&(run.pendingNext-=dt)<=0)nextDay();}
   prop.rotation.z+=dt*(state.fuel<=0&&mode==='flight'?Math.max(0,8):keys.boost?95:65);clouds.rotation.y+=dt*.001;
  }
  const position=state.normal.clone().multiplyScalar(RADIUS+state.altitude);aircraft.position.copy(position);

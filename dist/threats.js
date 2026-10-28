@@ -38,7 +38,7 @@ export function stepMissile(m,target,dt,targetVel=null){
 }
 // Dodge (v0.80): a barrel roll or loop started while a missile is DODGE_NEAR-DODGE_FAR units away
 // shakes its seeker. Too early and it re-acquires; too late and it's on you.
-export const DODGE_NEAR=4, DODGE_FAR=24;
+export const DODGE_NEAR=4, DODGE_FAR=30;
 export function canDodge(m,plane){const d=m.pos.distanceTo(plane);return d>=DODGE_NEAR&&d<=DODGE_FAR;}
 // A flare pulls a missile off you when it is released while the missile is closing in.
 export function flareDecoys(m,plane,rand=Math.random,pull=FLARE_PULL){const d=m.pos.distanceTo(plane);return d<40&&rand()<pull;}

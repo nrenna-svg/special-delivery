@@ -102,6 +102,10 @@ export function jobRoute(job){
  f.sams=(job.sams||[]).map(s=>({...s,normal:s.normal.clone()}));f.flak=(job.flak||[]).map(s=>({...s,normal:s.normal.clone()}));
  return {stops,features:f};
 }
+// Rough flight distance for a job (v0.82): home → pickups/drops in nearest-first order → home, in world units.
+export function routeLength(job){const r=jobRoute(job),HOME=homeStart();let pts=[...r.stops.map(s=>s.normal),...r.features.mail.map(m=>m.normal)];let cur=HOME,len=0;
+ if(r.features.crates.length){len+=arc(cur,r.features.crates[0].normal);cur=r.features.crates[0].normal;}
+ while(pts.length){pts.sort((a,b)=>arc(cur,a)-arc(cur,b));len+=arc(cur,pts[0]);cur=pts.shift();}return len+arc(cur,HOME);}
 // The board: four jobs, at least one CALM, at most one DEADLY, no two alike.
 export function jobBoard(seed){const r=rng(seed),jobs=[];let tries=0;
  while(jobs.length<4&&tries++<80){const j=makeJob(Math.floor(r()*1e9));

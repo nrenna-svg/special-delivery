@@ -4,8 +4,8 @@
 export const WORLDS={
  kestrel:{id:'kestrel',name:'Kestrel',tagline:'Island-hopping over a little ocean planet.',art:'linear-gradient(160deg,#7fc7d6,#2f8aa6 60%,#e0c489)',
   home:'KESTREL ISLAND',payMult:1,fee:0,rank:0,req:{}},
- mesa:{id:'mesa',name:'Mesa Rojo',tagline:'A desert canyon world: red mesas, deep canyons, dust devils and sandstorms. Every job pays 1.8×.',art:'linear-gradient(160deg,#f2b56b,#c4572f 55%,#7a2f22)',
-  home:'DUSTWATER FIELD',payMult:1.8,fee:100000,rank:2,req:{engine:3,fuel:3}}
+ mesa:{id:'mesa',name:'Mesa Rojo',tagline:'A desert canyon world: red mesas, deep canyons, dust devils and sandstorms. Every job pays 1.5×.',art:'linear-gradient(160deg,#f2b56b,#c4572f 55%,#7a2f22)',
+  home:'DUSTWATER FIELD',payMult:1.5,fee:100000,rank:2,req:{engine:3,fuel:3}}
 };
 export const WORLD_ORDER=['kestrel','mesa'];
 const KEY='special-delivery-world';

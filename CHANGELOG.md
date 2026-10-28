@@ -1,5 +1,14 @@
 # Special Delivery changelog
 
+## v0.82 — Balance pass
+
+Ran a route and economy simulator over every job type on every island (both worlds).
+- Fuel: burn doubled (`FUEL_SCALE`), so a DEADLY 3-island run uses most of a stock tank and the Fuel tank part matters (+12%/level, was +10%). New fuel estimate on each job and a ⛽ flag on slips over 95%; BINGO FUEL warning in flight.
+- Mesa Rojo pay 1.8× → 1.5×.
+- Dodge window 40-240 m → 40-300 m.
+- The TAKE THE JOB button stays pinned at the bottom of the board when the job details are long.
+- Tests updated for the new tank (82 pass).
+
 ## v0.80 — Very hard jobs: multi-island routes, missiles, flak; unlockable hook and flares
 
 - Hard jobs now span islands: ROUGH 2, DEADLY 3 (career.js `makeJob`: `islands`, stops/masts/medicine spread across them, crates carried to the next island). Pay +35% per extra island.
