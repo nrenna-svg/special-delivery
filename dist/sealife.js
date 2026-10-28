@@ -5,8 +5,16 @@
 // checked by tests/sealife.test.mjs to stay clear of islands, pads, fuel hoops and the landing approach.
 import {RADIUS} from './flight.js';
 import {offsetNormal,boatNormal,toNormal} from './challenges.js';
+import {DESERT} from './worlds.js';
+import {landAt} from './hazards.js';
+// Mesa Rojo (v0.74): no ships or sea life; sea stacks become red-rock hoodoos and waterspouts become
+// dust devils, both scattered over the open sand (seeded, kept off the mesas and the home field).
+function desertSpots(count,seed,clear){let s=seed;const r=()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296;};const out=[];
+ for(let k=0;k<4000&&out.length<count;k++){const v=[r()*2-1,r()*2-1,r()*2-1],l=Math.hypot(...v);if(l<.1||l>1)continue;const n=v.map(x=>x/l);if(n[1]>.86)continue;
+  const nv=toNormal(n);let ok=true;for(let a=0;a<6&&ok;a++)if(landAt(offsetNormal(nv,Math.cos(a)*clear,Math.sin(a)*clear)))ok=false;if(ok&&!landAt(nv))out.push(n.map(x=>Math.round(x*1000)/1000));}
+ return out;}
 
-export const SHIPS=[
+export const SHIPS=DESERT?[]:[
  {type:'sail',center:[0.107,-0.279,0.954],radius:39,period:177,phase:4.96,dir:1},
  {type:'tug',center:[0.549,0.427,0.719],radius:19,period:96,phase:5.98,dir:-1},
  {type:'cargo',center:[0.702,0.561,0.439],radius:38,period:174,phase:1.32,dir:1},
@@ -25,13 +33,13 @@ export const SHIPS=[
  {type:'tug',center:[-0.991,-0.136,0.009],radius:28,period:131,phase:1.28,dir:1}
 ];
 export const SHIP_TOP={sail:7,tug:4.6,cargo:6.6,trawler:5.6}, SHIP_RADIUS={sail:2.4,tug:2.4,cargo:4.2,trawler:3};
-export const STACKS=[
+export const STACKS=DESERT?desertSpots(26,4242,9).map((n,i)=>({normal:n,height:6+(i*37%7)})):[
  {normal:[0.325,0.545,0.773],height:5.7}, {normal:[0.981,-0.186,0.062],height:6.8}, {normal:[0.493,-0.635,-0.595],height:5.9}, {normal:[-0.333,-0.456,0.825],height:7.1}, {normal:[0.288,-0.947,-0.141],height:6.9}, {normal:[-0.707,-0.662,-0.248],height:10.9}, {normal:[0.617,-0.693,-0.373],height:5.4}, {normal:[0.964,-0.221,0.148],height:7.8}, {normal:[-0.271,-0.035,0.962],height:10.5}, {normal:[-0.217,-0.969,0.121],height:5.9}, {normal:[0.369,0.094,-0.925],height:4.8}, {normal:[-0.031,0.891,-0.454],height:8.7}, {normal:[-0.237,-0.266,-0.934],height:7.0}, {normal:[0.33,0.94,-0.02],height:5.3}, {normal:[-0.510,-0.418,0.752],height:10.6}, {normal:[-0.257,-0.418,0.871],height:7.8}, {normal:[0.957,0.173,-0.235],height:6.2}, {normal:[-0.384,-0.519,-0.764],height:6.5}
 ];
 export const STACK_RADIUS=2.3;
-export const SPOUTS=[[-0.432,0.898,-0.076],[0.404,-0.138,0.904],[0.517,0.854,0.063],[-0.869,-0.337,-0.362],[-0.652,0.651,0.389],[0.799,0.111,0.592]];
+export const SPOUTS=DESERT?desertSpots(8,777,22):[[-0.432,0.898,-0.076],[0.404,-0.138,0.904],[0.517,0.854,0.063],[-0.869,-0.337,-0.362],[-0.652,0.651,0.389],[0.799,0.111,0.592]];
 export const SPOUT_WANDER=10, SPOUT_CORE=3, SPOUT_PULL=10, SPOUT_TOP=48;
-export const LIFE=[[0.688,0.317,0.653],[-0.681,0.609,-0.406],[0.459,0.680,0.572],[0.760,0.204,-0.617],[0.350,-0.582,0.734],[0.683,0.669,0.293],[-0.612,0.715,0.337]];
+export const LIFE=DESERT?[]:[[0.688,0.317,0.653],[-0.681,0.609,-0.406],[0.459,0.680,0.572],[0.760,0.204,-0.617],[0.350,-0.582,0.734],[0.683,0.669,0.293],[-0.612,0.715,0.337]];
 
 export const shipMotion=s=>({center:toNormal(s.center),radius:s.radius,period:s.period,phase:s.phase,dir:s.dir});
 export function spoutNormal(i,t,out){const c=toNormal(SPOUTS[i]),a=t/(40+i*7)*Math.PI*2+i;return offsetNormal(c,Math.cos(a)*SPOUT_WANDER,Math.sin(a*1.3)*SPOUT_WANDER,out);}
@@ -50,8 +58,8 @@ export function createSeaLife({T,scene,mat,palette,label}){
  const root=new T.Group();scene.add(root);const up=new T.Vector3(0,1,0),tmp=new T.Vector3(),basis=new T.Matrix4(),q=new T.Quaternion();
  const m={hull:[mat('#c94f3d'),mat('#2f6f8c'),mat('#f2ead6'),mat('#3d4f5a')],deck:mat('#d9c08a'),cabin:mat('#f4efe2'),sail:mat('#fbf6ea',{side:T.DoubleSide}),stripe:mat('#2f6f8c'),
   box:[mat('#d8473a'),mat('#2f86b8'),mat('#e8b33d'),mat('#5aa36b'),mat('#ece6d6')],crane:mat('#f1c24b'),stack:mat('#2b3a40'),smoke:mat('#d7d9d6',{transparent:true,opacity:.6}),
-  whale:mat('#3b5363'),belly:mat('#c9d3d6'),dolphin:mat('#7f97a6'),rock:mat('#7c7b74'),rock2:mat('#5f625e'),grass:mat('#6f9a5c'),guano:mat('#efece2'),beacon:mat('#ffd36a',{emissive:'#ffb52c',emissiveIntensity:1}),
-  spray:mat('#ffffff',{transparent:true,opacity:.55}),spout:new T.MeshStandardMaterial({color:'#dfe9ee',transparent:true,opacity:.42,roughness:1,flatShading:true,depthWrite:false,side:T.DoubleSide}),wake:new T.MeshBasicMaterial({color:'#ffffff',transparent:true,opacity:.4})};
+  whale:mat('#3b5363'),belly:mat('#c9d3d6'),dolphin:mat('#7f97a6'),rock:mat(DESERT?'#b25d3c':'#7c7b74'),rock2:mat(DESERT?'#8f4631':'#5f625e'),grass:mat(DESERT?'#c98a55':'#6f9a5c'),guano:mat('#efece2'),beacon:mat('#ffd36a',{emissive:'#ffb52c',emissiveIntensity:1}),
+  spray:mat(DESERT?'#e2b47c':'#ffffff',{transparent:true,opacity:.55}),spout:new T.MeshStandardMaterial({color:DESERT?'#d9a46a':'#dfe9ee',transparent:true,opacity:.42,roughness:1,flatShading:true,depthWrite:false,side:T.DoubleSide}),wake:new T.MeshBasicMaterial({color:'#ffffff',transparent:true,opacity:.4})};
  const add=(geo,material,p)=>{const o=new T.Mesh(geo,material);p.add(o);return o;};
  const box=(p,w,h,d,x,y,z,material)=>{const o=add(new T.BoxGeometry(w,h,d),material,p);o.position.set(x,y,z);return o;};
  function orient(g,normal,alt,forward){g.position.copy(normal).multiplyScalar(RADIUS+alt);if(forward){const right=tmp.crossVectors(forward,normal).normalize();basis.makeBasis(right,normal,forward.clone().negate());g.quaternion.setFromRotationMatrix(basis);}else g.quaternion.setFromUnitVectors(up,normal);}
@@ -92,7 +100,7 @@ export function createSeaLife({T,scene,mat,palette,label}){
  const spouts=SPOUTS.map((c,i)=>{const g=new T.Group();root.add(g);const rings=[];
   for(let k=0;k<14;k++){const h=k*3.4,r=1.6+Math.pow(k/13,1.7)*7;const ring=add(new T.CylinderGeometry(r*1.05,r*.92,3.6,9,1,true),m.spout,g);ring.position.y=h+1.8;rings.push(ring);}
   const base=add(new T.TorusGeometry(4.5,1,6,18),m.spray,g);base.rotation.x=Math.PI/2;base.position.y=.4;
-  const cloud=add(new T.IcosahedronGeometry(9,1),new T.MeshStandardMaterial({color:'#5d6874',roughness:1,flatShading:true}),g);cloud.scale.set(1.6,.45,1.6);cloud.position.y=SPOUT_TOP+3;
+  const cloud=add(new T.IcosahedronGeometry(9,1),new T.MeshStandardMaterial({color:DESERT?'#c99a68':'#5d6874',roughness:1,flatShading:true,transparent:DESERT,opacity:DESERT?.55:1}),g);cloud.scale.set(1.6,.45,1.6);cloud.position.y=SPOUT_TOP+3;
   g.visible=false;return {g,rings,base,i};});
 
  let spoutsOn=false;

@@ -7,8 +7,9 @@ import {RADIUS} from './flight.js';
 import {boatNormal,ringCourse,slerpNormal,offsetNormal,toNormal} from './challenges.js';
 import {HANDOFF_Z,GROUND_ALT} from './airfield.js';
 import {GATE_Z} from './landing.js';
+import {DESERT} from './worlds.js';
 
-export const ISLANDS=[
+const KESTREL_ISLANDS=[
  {label:'KESTREL ISLAND',n:[0,1,-.06],size:62}, // v0.70: home island grown to hold the long runway and hangar
  {label:'THE EMERALD REACH',n:[.42,.42,-1],size:44},
  {label:'SOUTHERN ATOLLS',n:[-.2,-.6,-1],size:38},
@@ -22,6 +23,30 @@ export const ISLANDS=[
  {label:'PUFFIN ROCKS',n:[-.770,-.632,-.093],size:27},
  {label:'ORCHID ISLE',n:[.666,-.556,-.498],size:32}
 ];
+// v0.74 World 2, Mesa Rojo: the "islands" are mesas rising out of a sand sea. h = height of the mesa
+// top (world units; the home field is flat). Small buttes next to the bigger mesas make canyons.
+const MESA_ISLANDS=[
+ {label:'DUSTWATER FIELD',n:[0,1,-.06],size:62},
+ {label:'COPPER MESA',n:[.42,.42,-1],size:42,h:7},
+ {label:'TWIN BUTTES',n:[.1,.65,1],size:34,h:9},
+ {label:'SAGEBRUSH TABLE',n:[-1,.3,-.1],size:42,h:5},
+ {label:'RATTLESNAKE RIDGE',n:[1,.1,.1],size:46,h:10},
+ {label:'BONE CANYON',n:[-.5,-.25,1],size:38,h:11},
+ {label:'SUNSPIRE',n:[.489,-.362,.794],size:28,h:14},
+ {label:'RED ROCK ARCH',n:[-.2,-.6,-1],size:36,h:12},
+ {label:'VULTURE PEAK',n:[.666,-.556,-.498],size:30,h:15},
+ {label:"DEVIL'S ANVIL",n:[-.770,-.632,-.093],size:26,h:17},
+ {label:'THE FURNACE',n:[.1,-1,.15],size:46,h:13}
+];
+// Buttes beside the taller mesas, with a narrow canyon (about 9-13 units) between them and the mesa.
+for(const m of MESA_ISLANDS.slice()){if(!m.h||m.h<10)continue;const c=new Vector3(...m.n).normalize();
+ [[.6,1],[2.9,.85]].forEach(([a,k],j)=>{const size=Math.round(m.size*.42),d=m.size+size+9+j*4,n=offsetNormal(c,Math.cos(a+m.h)*d,Math.sin(a+m.h)*d);
+  MESA_ISLANDS.push({label:`${m.label} BUTTE ${j+1}`,n:[n.x,n.y,n.z],size,h:Math.round(m.h*k),butte:true});});}
+export const ISLANDS=DESERT?MESA_ISLANDS:KESTREL_ISLANDS;
+// Height of the ground (world units above the base sphere) where parcels, pads and crates sit.
+// Kestrel keeps its old flat value; mesas are their top height.
+export const GROUND=2.0;
+
 const COLORS=['#f4ad68','#f1d46f','#b6d674','#bdb0eb','#7edbd3','#f29bb0','#9fc3f5'];
 const UP=new Vector3(0,1,0);
 export function islandNormal(label){const i=ISLANDS.find(i=>i.label===label);if(!i)throw Error('Unknown island '+label);return new Vector3(...i.n).normalize();}
@@ -70,6 +95,7 @@ export const DAYS=[
 ];
 // Stop specs ready for newRoute(): {name,goods,color,normal}.
 export function dayStops(index){
+ if(DESERT)return [];// the legacy training days only exist on Kestrel
  return DAYS[index].stops.map((s,i)=>{const motion=s.boat?{...s.boat,center:toNormal(s.boat.center)}:null;
   return {name:s.name,goods:s.goods,color:COLORS[i%COLORS.length],island:s.boat?null:(s.island||'KESTREL ISLAND'),motion,urgent:s.urgent?{seconds:s.urgent}:null,
    normal:motion?boatNormal(motion,0):s.abs?new Vector3(s.abs[0],1,s.abs[1]).normalize():islandPoint(s.island,s.x,s.z)};});
@@ -77,7 +103,7 @@ export function dayStops(index){
 const homeStart=()=>{const a=HANDOFF_Z/(RADIUS+GROUND_ALT);return new Vector3(0,Math.cos(a),Math.sin(a));};
 const homeGate=()=>{const a=GATE_Z/(RADIUS+GROUND_ALT);return new Vector3(0,Math.cos(a),Math.sin(a));};
 // Resolved challenge layout for a day: rings, wind, mail masts, bird flocks, storm cells, night.
-export function dayFeatures(index){return buildFeatures(dayStops(index),DAYS[index].features||{});}
+export function dayFeatures(index){if(DESERT)return buildFeatures([],{});return buildFeatures(dayStops(index),DAYS[index].features||{});}
 // Resolve a feature recipe for a list of stops. f: {rings, wind, fuel:[{island,x,z}], mail:[{island,x,z}],
 // birds:{count}, storms:true|count, night, spouts}. Used by the training days and by endless runs (run.js).
 // from: optional start direction (endless runs start each day wherever the plane is, and never head home to land).

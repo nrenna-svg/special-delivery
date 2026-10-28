@@ -4,7 +4,7 @@
 import {RADIUS} from './flight.js';
 import {RUNWAY_HALF,RUNWAY_WIDTH,RUNWAY_HEIGHT,HANGAR,runwayNormal,PARK} from './airfield.js';
 
-export function createAirfield({T,scene,mat,palette}){
+export function createAirfield({T,scene,mat,palette,signText='KESTREL COURIER CO.'}){
  const up=new T.Vector3(0,1,0);
  const add=(geo,m,p)=>{const o=new T.Mesh(geo,m);p.add(o);return o;};
  const box=(p,w,h,d,x,y,z,m)=>{const o=add(new T.BoxGeometry(w,h,d),m,p);o.position.set(x,y,z);return o;};
@@ -44,7 +44,7 @@ export function createAirfield({T,scene,mat,palette}){
  setDoors(0);
  // Sign over the doors.
  {const c=document.createElement('canvas');c.width=1024;c.height=160;const x=c.getContext('2d');x.fillStyle='#173e49';x.fillRect(0,0,1024,160);x.strokeStyle='#ffd98a';x.lineWidth=8;x.strokeRect(8,8,1008,144);
-  x.fillStyle='#ffe8b5';x.font='600 78px Barlow Condensed, Arial Narrow, sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText('KESTREL COURIER CO.',512,84);
+  x.fillStyle='#ffe8b5';x.font='600 78px Barlow Condensed, Arial Narrow, sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText(signText,512,84);
   const tex=new T.CanvasTexture(c);tex.colorSpace=T.SRGBColorSpace;const sign=add(new T.PlaneGeometry(9,1.4),new T.MeshBasicMaterial({map:tex}),H);sign.rotation.y=-Math.PI/2;sign.position.set(-L/2-.12,DH+1.15,0);}
  // Interior: workbench and pegboard, drums, crates, tyres, a job board, hanging lamps.
  box(H,5.5,.18,1.4,1.5,1.1,R-1.6,m.bench);for(const x of [-1,4])box(H,.16,1.1,1.2,x,.55,R-1.6,m.bench);

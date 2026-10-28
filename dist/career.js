@@ -8,6 +8,8 @@ import {RADIUS} from './flight.js';
 import {ISLANDS,islandPoint,islandNormal,buildFeatures,homeStart} from './days.js';
 import {offsetNormal,slerpNormal} from './challenges.js';
 import {landAt} from './hazards.js';
+import {newParts} from './upgrades.js';
+import {WORLD,DESERT} from './worlds.js';
 
 export const TIERS=[
  {name:'CALM',color:'#7ed99a',mult:1,repair:120,crash:'repair',risk:'A crash costs repairs.'},
@@ -16,8 +18,10 @@ export const TIERS=[
  {name:'DEADLY',color:'#ff5f6d',mult:4,repair:0,crash:'career',risk:'A crash here ends your career.'}
 ];
 // Tier by island: roughly farther from home = harder, and the far side of the planet is deadly.
-export const ISLAND_TIER={'THE HOMEWARD ISLES':0,'THE EMERALD REACH':0,'WESTERN REACH':0,'EASTERN WILDS':1,'LIGHTHOUSE COAST':1,
+const KESTREL_TIER={'THE HOMEWARD ISLES':0,'THE EMERALD REACH':0,'WESTERN REACH':0,'EASTERN WILDS':1,'LIGHTHOUSE COAST':1,
  'CORAL KEYS':2,'SOUTHERN ATOLLS':2,'ORCHID ISLE':2,'PUFFIN ROCKS':3,'SUNSET ARCHIPELAGO':3};
+const MESA_TIER={'COPPER MESA':0,'TWIN BUTTES':0,'SAGEBRUSH TABLE':0,'RATTLESNAKE RIDGE':1,'BONE CANYON':1,'SUNSPIRE':2,'RED ROCK ARCH':2,'VULTURE PEAK':2,"DEVIL'S ANVIL":3,'THE FURNACE':3};
+export const ISLAND_TIER=DESERT?MESA_TIER:KESTREL_TIER;
 export const JOB_ISLANDS=Object.keys(ISLAND_TIER);
 const HOME=new Vector3(0,1,0);
 const arc=(a,b)=>Math.acos(Math.max(-1,Math.min(1,a.dot(b))))*RADIUS;
@@ -59,7 +63,7 @@ function features(tier,r){const a=r()*Math.PI*2,dir=[Math.cos(a),0,Math.sin(a)];
 // One job. seed makes it repeatable; type and island may be forced.
 export function makeJob(seed,{type,island}={}){
  const r=rng(seed);island=island||pick(r,JOB_ISLANDS);const tier=ISLAND_TIER[island];
- type=type||pick(r,['parcels','parcels','crate','mail','urgent','boat']);
+ type=type||pick(r,DESERT?['parcels','parcels','crate','crate','mail','urgent']:['parcels','parcels','crate','mail','urgent','boat']);if(DESERT&&type==='boat')type='parcels';// no boats in the desert
  const sites=shuffle(r,SITES[island]),stops=[],mail=[],crates=[];let units=1,title='',parcels=0;
  const place=()=>pick(r,PLACES);
  if(type==='parcels'){const n=Math.min(sites.length,2+Math.floor(r()*3));for(let i=0;i<n;i++)stops.push({name:place(),goods:pick(r,GOODS),normal:sites[i].normal,island});units=n;parcels=n+2;title=`${n} parcels`;}
@@ -70,7 +74,7 @@ export function makeJob(seed,{type,island}={}){
  else if(type==='mail'){const n=2+Math.floor(r()*2);for(let i=0;i<n;i++)mail.push({normal:sites[i].normal,island});units=n;title=`${n} mailbags`;}
  else if(type==='crate'){// Pick the crate up here, deliver it to another site on this island.
   crates.push({normal:sites[0].normal,island,goods:pick(r,CRATES)});stops.push({name:place(),goods:crates[0].goods,normal:sites[sites.length-1].normal,island,kind:'crate'});title=crates[0].goods;}
- const dist=islandDistance(island),pay=Math.round(JOB_TYPES[type].base*(type==='parcels'||type==='mail'?units:1)*TIERS[tier].mult*(1+dist/700)/10)*10;
+ const dist=islandDistance(island),pay=Math.round(JOB_TYPES[type].base*(type==='parcels'||type==='mail'?units:1)*TIERS[tier].mult*WORLD.payMult*(1+dist/700)/10)*10;
  const stopSpecs=stops.map((s,i)=>({...s,color:COLORS[i%COLORS.length]}));
  // Urgent timer: the straight-line flight there at cruise, plus a margin.
  for(const s of stopSpecs)if(s.urgent)s.urgent.seconds=Math.round(dist/18*1.6+45);// includes turning around after takeoff
@@ -110,7 +114,7 @@ export function settle(job,{earned,done,crashes,landing,failed=false}){
 
 // ── Saved career ─────────────────────────────────────────────────────────────────────────
 const KEY='special-delivery-career';
-export function newCareer(){return {cash:0,flights:0,jobsDone:0,earned:0,alive:true,boardSeed:Math.floor(Math.random()*1e9),started:Date.now()};}
+export function newCareer(){return {cash:0,flights:0,jobsDone:0,earned:0,spent:0,alive:true,boardSeed:Math.floor(Math.random()*1e9),started:Date.now(),parts:newParts(),worlds:['kestrel']};}
 export function loadCareer(){try{const c=JSON.parse(localStorage.getItem(KEY));if(c&&typeof c.cash==='number')return {...newCareer(),...c};}catch{}return newCareer();}
 export function saveCareer(c){try{localStorage.setItem(KEY,JSON.stringify(c));}catch{}return c;}
 export function loadBestCareer(){try{return JSON.parse(localStorage.getItem(KEY+'-best'))||null;}catch{return null;}}

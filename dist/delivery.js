@@ -1,6 +1,7 @@
 import {Vector3} from './vendor/three.core.js';
 import {RADIUS,advance,verticalSpeed} from './flight.js';
 import {windAt,stopNormalAt} from './challenges.js';
+import {groundHeight} from './hazards.js';
 export const IMPACT_RADIUS=RADIUS+2.5;
 export const STOP_DATA=[
  {name:'The village bakery',goods:'Flour & sugar',x:0,z:-.165,color:'#f4ad68'},
@@ -13,21 +14,22 @@ export const STOP_DATA=[
 export function newRoute(specs=null){const stops=specs?specs.map((s,i)=>({...s,id:i,normal:s.normal.clone(),done:false})):STOP_DATA.map((s,i)=>({...s,id:i,normal:new Vector3(s.x,1,s.z).normalize(),done:false}));return {stops,parcels:12,drops:0,delivered:0,score:0,condition:100,elapsed:0,complete:false};}
 export const RELEASE_DELAY=.65, CHUTE_DELAY=1, INFLATION_TIME=.45;
 // opts.chuteDelay: seconds before the chute opens (crates hang low on the hook, so theirs opens at once).
-export function makeParcel(s,opts={}){return {chuteDelay:opts.chuteDelay??CHUTE_DELAY,position:s.normal.clone().multiplyScalar(RADIUS+s.altitude-1),velocity:s.forward.clone().multiplyScalar(s.speed*Math.cos(s.pitch)).addScaledVector(s.normal,verticalSpeed(s)-1),age:0,inflation:0,broken:false};}
+// opts.drift (wind drift multiplier) and opts.soft (max safe impact speed) come from parachute upgrades.
+export function makeParcel(s,opts={}){return {chuteDelay:opts.chuteDelay??CHUTE_DELAY,drift:opts.drift??1,soft:opts.soft??5.5,position:s.normal.clone().multiplyScalar(RADIUS+s.altitude-1),velocity:s.forward.clone().multiplyScalar(s.speed*Math.cos(s.pitch)).addScaledVector(s.normal,verticalSpeed(s)-1),age:0,inflation:0,broken:false};}
 export function stepParcel(p,dt){
  p.age+=dt;p.inflation=Math.max(0,Math.min(1,(p.age-(p.chuteDelay??CHUTE_DELAY))/INFLATION_TIME));
  const normal=p.position.clone().normalize();p.velocity.addScaledVector(normal,-12*dt);
- if(p.inflation>0){const radial=p.velocity.dot(normal),tangent=p.velocity.clone().addScaledVector(normal,-radial);const vertical=radial+(-3.2-radial)*(1-Math.exp(-8*p.inflation*dt));const w=p.wind?windAt(p.wind,normal,p.windTime||0):null;const keep=Math.exp(-.55*p.inflation*dt);if(w)tangent.sub(w);tangent.multiplyScalar(keep);if(w)tangent.add(w);p.velocity.copy(tangent).addScaledVector(normal,vertical);}
+ if(p.inflation>0){const radial=p.velocity.dot(normal),tangent=p.velocity.clone().addScaledVector(normal,-radial);const vertical=radial+(-3.2-radial)*(1-Math.exp(-8*p.inflation*dt));const w=p.wind?windAt(p.wind,normal,p.windTime||0).multiplyScalar(p.drift??1):null;const keep=Math.exp(-.55*p.inflation*dt);if(w)tangent.sub(w);tangent.multiplyScalar(keep);if(w)tangent.add(w);p.velocity.copy(tangent).addScaledVector(normal,vertical);}
  p.position.addScaledVector(p.velocity,dt);
- const hit=p.position.length()<=IMPACT_RADIUS;
- if(hit)p.broken=p.inflation<.95||-p.velocity.dot(p.position.clone().normalize())>5.5;
+ const hit=p.position.length()<=RADIUS+groundHeight(normal)+.5;// IMPACT_RADIUS on flat ground
+ if(hit)p.broken=p.inflation<.95||-p.velocity.dot(p.position.clone().normalize())>(p.soft??5.5);
  return hit;
 }
 export function releaseState(s){const copy={...s,normal:s.normal.clone(),forward:s.forward.clone(),stunt:null};for(let t=0;t<RELEASE_DELAY;t+=1/120)advance(copy,{turn:s.bank/.82,climb:s.pitch/.48},Math.min(1/120,RELEASE_DELAY-t));return copy;}
 // wind: optional day wind (see challenges.js), applied with gusts frozen at windTime.
-export function predictDrop(s,wind=null,windTime=0,opts={}){const p=makeParcel(releaseState(s),opts);p.wind=wind;p.windTime=windTime;for(let i=0;i<6000;i++){if(stepParcel(p,1/120))return {position:p.position.normalize().multiplyScalar(IMPACT_RADIUS+.08),broken:p.broken,time:RELEASE_DELAY+(i+1)/120};}return null;}
+export function predictDrop(s,wind=null,windTime=0,opts={}){const p=makeParcel(releaseState(s),opts);p.wind=wind;p.windTime=windTime;for(let i=0;i<6000;i++){if(stepParcel(p,1/120)){const n=p.position.clone().normalize();return {position:n.multiplyScalar(RADIUS+groundHeight(n)+.58),broken:p.broken,time:RELEASE_DELAY+(i+1)/120};}}return null;}
 export function predictImpact(s){return predictDrop(s)?.position||null;}
-export function safeDropAltitude(s){const released=releaseState({...s,altitude:60});let velocity=Math.min(0,verticalSpeed(released))-1,fall=0;for(let age=0;age<4;age+=1/120){const inflation=Math.max(0,Math.min(1,(age-CHUTE_DELAY)/INFLATION_TIME));velocity-=12/120;if(inflation)velocity+=(-3.2-velocity)*(1-Math.exp(-8*inflation/120));fall-=velocity/120;if(inflation>=.95&&-velocity<=5.5)break;}return Math.ceil(3.5+fall+Math.max(0,60-released.altitude)+2);}
+export function safeDropAltitude(s,opts={}){const cd=opts.chuteDelay??CHUTE_DELAY,soft=opts.soft??5.5;const released=releaseState({...s,altitude:60});let velocity=Math.min(0,verticalSpeed(released))-1,fall=0;for(let age=0;age<4;age+=1/120){const inflation=Math.max(0,Math.min(1,(age-cd)/INFLATION_TIME));velocity-=12/120;if(inflation)velocity+=(-3.2-velocity)*(1-Math.exp(-8*inflation/120));fall-=velocity/120;if(inflation>=.95&&-velocity<=soft)break;}return Math.ceil(3.5+fall+Math.max(0,60-released.altitude)+2);}
 export const PAD_RADIUS=8, BOAT_PAD_RADIUS=13;
 // Boats are moving targets, so their catch zone is wider than a fixed pad.
 export const padRadius=s=>s.motion?BOAT_PAD_RADIUS:PAD_RADIUS;

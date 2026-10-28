@@ -4,6 +4,8 @@
 // wingtip lights, pilot scarf, propeller blur, exhaust puffs) and water splashes.
 // Everything uses its own random seed so the original island layout is unchanged.
 import {RADIUS} from './flight.js';
+import {DESERT} from './worlds.js';
+import {mesaHeight} from './hazards.js';
 
 export function createGraphics({T,renderer,scene,camera,sun,hemi,fill,ocean,islands,visual,prop,clouds,mat,palette,blocked=()=>false,lite=false}){
  let seed=99173;const rnd=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;};
@@ -12,7 +14,7 @@ export function createGraphics({T,renderer,scene,camera,sun,hemi,fill,ocean,isla
  const box=(p,w,h,d,x,y,z,material)=>{const o=add(new T.BoxGeometry(w,h,d),material,p);o.position.set(x,y,z);return o;};
  const slerp=(a,b,u)=>{const d=Math.max(-1,Math.min(1,a.dot(b))),w=Math.acos(d),s=Math.sin(w);return w<1e-6?a.clone():a.clone().multiplyScalar(Math.sin((1-u)*w)/s).addScaledVector(b,Math.sin(u*w)/s).normalize();};
  const surface=(n,alt,parent=scene)=>{const g=new T.Group();g.position.copy(n).multiplyScalar(RADIUS+alt);g.quaternion.setFromUnitVectors(up,n);parent.add(g);return g;};
- const groundAt=r=>r>.86?.25:1+Math.sin((1-r)*Math.PI)*1.1;
+ const groundAt=(r,h=0)=>h?mesaHeight(h,r):r>.86?.25:1+Math.sin((1-r)*Math.PI)*1.1;
 
  // ── Sun and shadows ───────────────────────────────────────────────────────────
  if(!lite){renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
@@ -29,18 +31,19 @@ export function createGraphics({T,renderer,scene,camera,sun,hemi,fill,ocean,isla
 
  // ── Ocean: finer facets, gentle animated swell, shallows around islands ───────
  const oceanGeo=new T.IcosahedronGeometry(RADIUS,lite?26:44);const pos=oceanGeo.attributes.position,colors=[];
- const deep=new T.Color('#1f7899'),mid=new T.Color('#258caa'),shallow=new T.Color('#45c3c0'),lagoon=new T.Color('#7fdcc9'),cc=new T.Color();
+ // Mesa Rojo (v0.74): the 'ocean' is a sand sea, rust-red around the mesas fading to pale dunes.
+ const deep=new T.Color(DESERT?'#e6c08a':'#1f7899'),mid=new T.Color(DESERT?'#ddb07a':'#258caa'),shallow=new T.Color(DESERT?'#c98955':'#45c3c0'),lagoon=new T.Color(DESERT?'#b8693f':'#7fdcc9'),cc=new T.Color();
  for(let i=0;i<pos.count;i++){tmp.fromBufferAttribute(pos,i).normalize();let best=9;for(const isl of islands){const r=Math.acos(Math.max(-1,Math.min(1,tmp.dot(isl.n))))*RADIUS/isl.size;if(r<best)best=r;}
   if(best<1.08)cc.copy(lagoon).lerp(shallow,Math.min(1,(best-.85)/.23));else if(best<1.6)cc.copy(shallow).lerp(mid,(best-1.08)/.52);else cc.copy(mid).lerp(deep,Math.min(1,(best-1.6)/1.4));colors.push(cc.r,cc.g,cc.b);}
  oceanGeo.setAttribute('color',new T.Float32BufferAttribute(colors,3));
  const waterTime={value:0};
- const waterMat=new T.MeshStandardMaterial({vertexColors:true,flatShading:true,roughness:.32,metalness:.12});
- waterMat.onBeforeCompile=sh=>{sh.uniforms.uTime=waterTime;sh.vertexShader='uniform float uTime;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nfloat sw=sin(dot(position,vec3(.21,.17,.13))+uTime*1.3)*.07+sin(dot(position,vec3(-.11,.29,.07))*1.7+uTime*.9)*.05+sin(dot(position,vec3(.31,-.05,.23))*2.3-uTime*1.7)*.03;transformed+=normalize(position)*sw;');};
+ const waterMat=new T.MeshStandardMaterial({vertexColors:true,flatShading:true,roughness:DESERT?.95:.32,metalness:DESERT?0:.12});
+ waterMat.onBeforeCompile=sh=>{sh.uniforms.uTime=waterTime;sh.vertexShader='uniform float uTime;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nfloat sw=sin(dot(position,vec3(.21,.17,.13))+uTime*1.3)*.07+sin(dot(position,vec3(-.11,.29,.07))*1.7+uTime*.9)*.05+sin(dot(position,vec3(.31,-.05,.23))*2.3-uTime*1.7)*.03;transformed+=normalize(position)*sw*'+(DESERT?'0.0':'1.0')+';');};
  ocean.geometry.dispose();ocean.geometry=oceanGeo;ocean.material=waterMat;ocean.receiveShadow=true;ocean.userData.noCast=true;
 
  // ── Shoreline surf ────────────────────────────────────────────────────────────
  const foamMat=new T.MeshBasicMaterial({color:'#ffffff',transparent:true,opacity:.5,depthWrite:false,side:T.DoubleSide});
- for(const isl of islands){if(!isl.outline)continue;const v=[],o=isl.outline,c=isl.n;
+ for(const isl of islands){if(!isl.outline||DESERT)continue;const v=[],o=isl.outline,c=isl.n;
   for(let i=0;i<o.length;i++){const a=o[i],b=o[(i+1)%o.length];const a1=slerp(c,a,.985).multiplyScalar(RADIUS+.16),a2=slerp(c,a,1.1).multiplyScalar(RADIUS+.1),b1=slerp(c,b,.985).multiplyScalar(RADIUS+.16),b2=slerp(c,b,1.1).multiplyScalar(RADIUS+.1);
    for(const p of [a1,a2,b2,a1,b2,b1])v.push(p.x,p.y,p.z);}
   const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(v,3));const f=new T.Mesh(g,foamMat);f.userData.noCast=true;scene.add(f);}
@@ -51,7 +54,13 @@ export function createGraphics({T,renderer,scene,camera,sun,hemi,fill,ocean,isla
  function palm(g){const h=3.2+rnd()*1.6,lean=(rnd()-.5)*.5;let y=0,x=0;for(let k=0;k<5;k++){const seg=add(new T.CylinderGeometry(.16,.2,h/5+.05,6),m.palm,g);x+=Math.sin(lean)*h/5*.6;seg.position.set(x,y+h/10,0);seg.rotation.z=-lean*.6;y+=h/5;}
   for(let k=0;k<7;k++){const f=add(new T.ConeGeometry(.45,2.6,4),k%2?m.frond:m.frond2,g);const a=k/7*Math.PI*2;f.position.set(x+Math.cos(a)*1,y-.15,Math.sin(a)*1);f.rotation.set(Math.sin(a)*1.9,0,-Math.cos(a)*1.9);f.scale.set(1,1,.25);}
   for(let k=0;k<3;k++){const n=add(new T.IcosahedronGeometry(.17,0),m.nut,g);n.position.set(x+Math.cos(k*2)*.22,y-.35,Math.sin(k*2)*.22);}}
- for(const isl of islands){if(!isl.outline)continue;const c=isl.n;const pick=r=>{const o=isl.outline[Math.floor(rnd()*isl.outline.length)];return {n:slerp(c,o,r),r};};
+ if(DESERT){const red=[mat('#a9553a'),mat('#8a4430'),mat('#c46a44')],sage=[mat('#9aa36b'),mat('#7f8a58'),mat('#b5ab72')],cac=mat('#5d8a4a');
+  for(const isl of islands){if(!isl.outline)continue;const c=isl.n,h=isl.h||0;const pick=r=>{const o=isl.outline[Math.floor(rnd()*isl.outline.length)];return {n:slerp(c,o,r),r};};
+   // Boulders scattered at the foot of the cliffs, sage scrub and small cacti on top.
+   for(let k=0;k<16;k++){const p=pick(.9+rnd()*.25);if(blocked(p.n))continue;const g=surface(p.n,.05);for(let j=0;j<1+Math.floor(rnd()*3);j++){const r=add(new T.DodecahedronGeometry(.6+rnd()*1.3,0),red[(k+j)%3],g);r.position.set((rnd()-.5)*3,.3,(rnd()-.5)*3);r.scale.y=.75;r.rotation.set(rnd(),rnd(),rnd());}}
+   for(let k=0;k<14;k++){const p=pick(.1+rnd()*.6);if(blocked(p.n))continue;const g=surface(p.n,groundAt(p.r,h)-.1);const b=add(new T.IcosahedronGeometry(.45+rnd()*.4,0),sage[k%3],g);b.position.y=.3;b.scale.y=.6;}
+   for(let k=0;k<6;k++){const p=pick(.15+rnd()*.5);if(blocked(p.n))continue;const g=surface(p.n,groundAt(p.r,h));const hh=1+rnd()*1.5;box(g,.3,hh,.3,0,hh/2,0,cac);if(rnd()<.6){box(g,.5,.22,.22,.3,hh*.55,0,cac);box(g,.22,.6,.22,.5,hh*.55+.3,0,cac);}}}
+ }else for(const isl of islands){if(!isl.outline)continue;const c=isl.n;const pick=r=>{const o=isl.outline[Math.floor(rnd()*isl.outline.length)];return {n:slerp(c,o,r),r};};
   for(let k=0;k<8;k++){const p=pick(.86+rnd()*.08);if(blocked(p.n))continue;const g=surface(p.n,groundAt(p.r)-.05);g.rotateY(rnd()*6.28);palm(g);}
   for(let k=0;k<9;k++){const p=pick(.92+rnd()*.14);if(blocked(p.n))continue;const g=surface(p.n,.05);for(let j=0;j<1+Math.floor(rnd()*3);j++){const r=add(new T.DodecahedronGeometry(.5+rnd()*.9,0),rnd()<.5?m.rock:m.rock2,g);r.position.set((rnd()-.5)*2,.2,(rnd()-.5)*2);r.scale.y=.7;r.rotation.set(rnd(),rnd(),rnd());}}
   for(let k=0;k<12;k++){const p=pick(.15+rnd()*.6);if(blocked(p.n))continue;const g=surface(p.n,groundAt(p.r)-.1);const b=add(new T.IcosahedronGeometry(.6+rnd()*.6,0),m.bush[k%3],g);b.position.y=.45;b.scale.y=.75;}
@@ -64,7 +73,7 @@ export function createGraphics({T,renderer,scene,camera,sun,hemi,fill,ocean,isla
 
  // ── Fuller clouds with shaded undersides ──────────────────────────────────────
  const cloudTop=mat('#fbf8ef'),cloudBottom=mat('#d9dde0');
- for(let i=0;i<56;i++){const n=new T.Vector3(rnd()-.5,rnd()-.5,rnd()-.5).normalize();const g=new T.Group();g.position.copy(n).multiplyScalar(RADIUS+44+rnd()*24);g.quaternion.setFromUnitVectors(up,n);clouds.add(g);
+ for(let i=0;i<(DESERT?18:56);i++){const n=new T.Vector3(rnd()-.5,rnd()-.5,rnd()-.5).normalize();const g=new T.Group();g.position.copy(n).multiplyScalar(RADIUS+44+rnd()*24);g.quaternion.setFromUnitVectors(up,n);clouds.add(g);
   const count=5+Math.floor(rnd()*4);for(let j=0;j<count;j++){const r=2+rnd()*2.6;const top=add(new T.IcosahedronGeometry(r,1),cloudTop,g);top.position.set(j*2.6-count*1.3,rnd()*1.2+.6,(rnd()-.5)*3);top.scale.set(1.3,.7,1.1);
    const bot=add(new T.IcosahedronGeometry(r*.95,1),cloudBottom,g);bot.position.copy(top.position).y-=.9;bot.scale.set(1.25,.45,1.05);}}
  clouds.traverse(o=>{if(o.isMesh)o.userData.noCast=true;});

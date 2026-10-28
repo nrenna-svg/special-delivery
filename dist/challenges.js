@@ -3,6 +3,7 @@
 // unit "normals" on the planet plus an altitude, like the rest of the game.
 import {Vector3,Quaternion} from './vendor/three.core.js';
 import {RADIUS} from './flight.js';
+import {DESERT} from './worlds.js';
 
 const UP=new Vector3(0,1,0);
 const arcUnits=(a,b)=>Math.acos(Math.max(-1,Math.min(1,a.dot(b))))*RADIUS;
@@ -66,7 +67,7 @@ export function stormStrength(storm,normal){const d=arcUnits(storm.center,normal
 
 // ── Sunset to night ──────────────────────────────────────────────────────────
 const SKY=[
- {u:0,bg:[.514,.741,.804],sun:3.1,sunColor:[1,.95,.77],hemi:2.5,glow:0,stars:0},
+ {u:0,bg:DESERT?[.95,.76,.55]:[.514,.741,.804],sun:3.1,sunColor:DESERT?[1,.9,.72]:[1,.95,.77],hemi:2.5,glow:0,stars:0},
  {u:.45,bg:[.95,.64,.44],sun:2.2,sunColor:[1,.7,.45],hemi:1.9,glow:.15,stars:0},
  {u:.72,bg:[.24,.26,.45],sun:.9,sunColor:[.9,.6,.7],hemi:1.1,glow:.6,stars:.5},
  {u:1,bg:[.05,.08,.19],sun:.35,sunColor:[.62,.71,1],hemi:.6,glow:1,stars:1}

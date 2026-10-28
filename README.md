@@ -1,4 +1,4 @@
-# Special Delivery — v0.72
+# Special Delivery — v0.74
 
 Around the world. Right on time.
 
@@ -15,6 +15,11 @@ The game starts inside the Kestrel Courier Co. hangar on the home island. A cork
 - Endless Run and Training Days are hidden, not deleted: set `LEGACY_MODES=true` in game.js to bring the old menus back (they have not been re-checked since the world and runway changed).
 - World: planet radius 270 (was 200; grown 35% again). The home island is bigger (size 62) to fit a 66-unit runway that follows the planet's curve, an apron and the quonset hangar (hangar.js builds the scenery; airfield.js has the runway frame, rollout path and landing rules).
 - Automated tests can read live state through `window.__sd` (read-only hooks).
+
+## Plane shop, ranks and worlds (v0.74)
+- **Plane shop** (hangar tab, upgrades.js): 8 parts. Each must be unlocked first (one-time fee, gated by pilot rank), then upgraded through 5 levels; each level costs about 2× the last and improves the part only a little (≈20-25% when maxed). Engine (speed, acceleration), Fuel tank (+10% flying time per level), Cargo hold (+1 spare parcel), Wings (climb, ceiling, slower stall), Ailerons (turn rate, bank response, roll speed), Parachutes (open sooner, drift less, softer landing), Winch & hook (longer, faster line, wider hook), Landing gear & brakes (harder/faster touchdowns, stronger brakes). Effects flow through `state.perf` (flight.js), `fuelBurn(..,perf)`, chute options in delivery.js, `gradeTouchdown(..,lim)`, and the winch in game.js. Upgrades show on the plane (cowl, belly tank, wingtips, winch drum, cargo pod, a gold stripe per maxed part).
+- **Pilot ranks** (upgrades.js `RANKS`): Rookie → Courier (3 jobs, $2.5k earned) → Senior Courier (10, $15k) → Ace (25, $60k) → Legend (50, $200k). Wings/Ailerons/Parachutes unlock at Courier ($3k each); Winch and Landing gear at Senior Courier ($10k each).
+- **Worlds** (worlds.js): Kestrel (start) and **Mesa Rojo**, a desert canyon world: red-rock mesas of different heights rising from a sand sea, buttes beside the tall mesas forming canyons, hoodoos (the sea stacks) and dust devils (the waterspouts) on the open sand, sandstorms (storm cells), vultures, cacti and adobe houses. Delivery sites sit on the mesa tops (`groundHeight` in hazards.js; parcels and crates land on top). No boat jobs there; every job pays 1.8×. Unlock: Senior Courier rank, Engine and Fuel tank level 3, and a $100,000 ferry license. Switching worlds plays a short ferry card and reloads the page (`special-delivery-world` in localStorage). Each world can see the other hanging in its sky. A career over (DEADLY crash) resets everything, including parts and worlds.
 
 ## Controls
 - Mouse: steer. The cursor's offset from screen center banks left/right and climbs/dives (mouse up = nose up); a dashed ring marks the dead zone and a crosshair follows the cursor. Steering starts on the first mouse move after takeoff, resume or landing.

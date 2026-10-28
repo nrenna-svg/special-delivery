@@ -72,12 +72,13 @@ export function applyRunwayPose(s,p){
 // down; the HUD shows x10 m/s), speed in world units/s (HUD knots = x3), bank in radians,
 // along = how well the nose lines up with the runway (1 = straight down it, either direction).
 export const MAX_SINK=2.6, MAX_LAND_SPEED=24, MAX_LAND_BANK=.38;
-export function gradeTouchdown({sink,speed,bank,x,along}){
- if(sink>MAX_SINK)return {ok:false,label:'HARD LANDING',why:'came down too hard'};
- if(speed>MAX_LAND_SPEED)return {ok:false,label:'OVERRAN',why:'too fast to stop'};
+// lim: optional landing-gear limits {sink, landSpeed} from upgrades.
+export function gradeTouchdown({sink,speed,bank,x,along},lim={}){const maxSink=lim.sink??MAX_SINK,maxSpeed=lim.landSpeed??MAX_LAND_SPEED;
+ if(sink>maxSink)return {ok:false,label:'HARD LANDING',why:'came down too hard'};
+ if(speed>maxSpeed)return {ok:false,label:'OVERRAN',why:'too fast to stop'};
  if(Math.abs(bank)>MAX_LAND_BANK)return {ok:false,label:'WINGTIP STRIKE',why:'wings not level'};
  if(along<.8)return {ok:false,label:'GROUND LOOP',why:'not lined up with the runway'};
- const grade=sink<=.9&&speed<=18?{label:'GREASED IT',stars:3,bonus:.6}:sink<=1.7?{label:'FIRM LANDING',stars:2,bonus:.35}:{label:'BOUNCY LANDING',stars:1,bonus:.15};
+ const grade=sink<=.9&&speed<=18?{label:'GREASED IT',stars:3,bonus:.6}:sink<=Math.max(1.7,maxSink*.65)?{label:'FIRM LANDING',stars:2,bonus:.35}:{label:'BOUNCY LANDING',stars:1,bonus:.15};
  const centered=Math.abs(x)<1.2;return {ok:true,...grade,centered,bonus:grade.bonus+(centered?.1:0),knots:Math.round(speed*3),sinkMs:Math.round(sink*10)};
 }
 // After touchdown: brake to a stop on the runway. Returns the distance it takes.

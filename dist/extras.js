@@ -4,7 +4,11 @@
 // happened each frame as events for game.js to score and announce.
 import {RADIUS} from './flight.js';
 import {BOAT_PAD_RADIUS} from './delivery.js';
-import {floorAt,WATER_FLOOR,BEACH_FLOOR} from './hazards.js';
+import {floorAt,WATER_FLOOR,BEACH_FLOOR,groundHeight} from './hazards.js';
+import {GROUND} from './days.js';
+import {DESERT} from './worlds.js';
+// Raise things that stand on the ground by the local ground height (mesa tops in Mesa Rojo; 0 on Kestrel).
+const lift=n=>groundHeight(n)-GROUND;
 export const FUEL_ALT=13;
 import {ringHit,ringScore,STREAK_WINDOW,windAt,boatNormal,flockBirds,BIRD_HIT,BIRD_DAMAGE,stormStrength,skyAt,MAIL_ALT,urgentLeft,formatClock} from './challenges.js';
 
@@ -14,9 +18,9 @@ export function createExtras({T,scene,mat,palette,label,hemi,sun,aircraft,baseSk
  let leadTime=null,birdHits=0,stormNotice=-99,flash=0,stars=null,lamp=null,glow=0,buffet={turn:0,climb:0},inStorm=0,time=0,lateAnnounced=new Set(),mailTaken=0;
  const m={ring:mat('#ffd36a',{emissive:'#ffb52c',emissiveIntensity:.8}),hull:mat('#c94f3d'),hull2:mat('#2f6f8c'),deck:mat('#d9c08a'),cabin:mat('#f2ead6'),
   sock:mat('#ff7a3a',{side:T.DoubleSide}),mast:[mat('#d8473a'),mat('#f4efe2')],bag:mat('#9b7448'),rope:mat('#2b3a40'),
-  fuel:mat('#5fe39a',{emissive:'#1fae5c',emissiveIntensity:.7}),bird:mat('#f3f1ea'),birdTip:mat('#3a4750'),cloud:mat('#4d5866',{flatShading:true}),cloud2:mat('#626e7d',{flatShading:true}),rain:mat('#9fb7d6',{transparent:true,opacity:.45}),
+  fuel:mat('#5fe39a',{emissive:'#1fae5c',emissiveIntensity:.7}),bird:mat(DESERT?'#3b302b':'#f3f1ea'),birdTip:mat(DESERT?'#1f1916':'#3a4750'),cloud:mat(DESERT?'#a8734a':'#4d5866',{flatShading:true}),cloud2:mat(DESERT?'#8f6140':'#626e7d',{flatShading:true}),rain:mat(DESERT?'#d9ac74':'#9fb7d6',{transparent:true,opacity:.45}),
   feather:mat('#ffffff'),spark:mat('#fff2b0',{emissive:'#ffd36a',emissiveIntensity:1}),crate:mat('#b88a52'),strap:mat('#3b4a50')};
- const boltMat=new T.LineBasicMaterial({color:'#f4f7ff'}),gloom=new T.Color('#4a5462');
+ const boltMat=new T.LineBasicMaterial({color:'#f4f7ff'}),gloom=new T.Color(DESERT?'#9c6a43':'#4a5462');
  const add=(geo,material,p)=>{const o=new T.Mesh(geo,material);p.add(o);return o;};
  const box=(p,w,h,d,x,y,z,material)=>{const o=add(new T.BoxGeometry(w,h,d),material,p);o.position.set(x,y,z);return o;};
  // Orient a group at a surface point: +Y = normal, -Z = forward.
@@ -47,13 +51,13 @@ export function createExtras({T,scene,mat,palette,label,hemi,sun,aircraft,baseSk
   // Urgent stops get a pulsing red badge over the pad.
   route.stops.forEach((s,i)=>{if(!s.urgent)return;const sp=label('!');sp.material=sp.material.clone();sp.material.color=new T.Color('#ff7b6b');sp.position.y=10;sp.scale.set(5,5,1);pads[i].g.add(sp);urgent.push({stop:s,sprite:sp});});
   // Mailbag masts.
-  masts=f.mail.map(mm=>{const g=surfaceGroup(mm.normal,1.2);for(let k=0;k<6;k++){const c=add(new T.CylinderGeometry(.32,.38,1.9,8),m.mast[k%2],g);c.position.y=k*1.9+.95;}
+  masts=f.mail.map(mm=>{const g=surfaceGroup(mm.normal,1.2+lift(mm.normal));for(let k=0;k<6;k++){const c=add(new T.CylinderGeometry(.32,.38,1.9,8),m.mast[k%2],g);c.position.y=k*1.9+.95;}
    box(g,.2,.2,4.2,0,11.3,-2,m.rope);const bagY=MAIL_ALT-1.2;box(g,.05,11.3-bagY,.05,0,(11.3+bagY)/2,-3.9,m.rope);
    const bag=add(new T.IcosahedronGeometry(.8,1),m.bag,g);bag.scale.set(1,1.3,1);bag.position.set(0,bagY,-3.9);const sign=label('M');sign.position.y=14.2;g.add(sign);
    // Hook point is the bag, in world space.
    const hook=new T.Vector3();g.updateMatrixWorld(true);bag.getWorldPosition(hook);return {...mm,g,bag,sign,hook,taken:false};});
   // Crate pickups (v0.70): a lattice tower with a crate on top and a lifting ring above it at hook height.
-  crates=(f.crates||[]).map(c=>{const g=surfaceGroup(c.normal,1.2);for(const [x,z] of [[-.9,-.9],[.9,-.9],[-.9,.9],[.9,.9]])box(g,.18,5.6,.18,x,2.8,z,m.rope);
+  crates=(f.crates||[]).map(c=>{const g=surfaceGroup(c.normal,1.2+lift(c.normal));for(const [x,z] of [[-.9,-.9],[.9,-.9],[-.9,.9],[.9,.9]])box(g,.18,5.6,.18,x,2.8,z,m.rope);
    for(let y=1.2;y<5.4;y+=1.4){box(g,1.95,.1,.1,0,y,-.9,m.rope);box(g,1.95,.1,.1,0,y,.9,m.rope);box(g,.1,.1,1.95,-.9,y,0,m.rope);box(g,.1,.1,1.95,.9,y,0,m.rope);}
    box(g,2.6,.2,2.6,0,5.6,0,m.deck);
    const load=new T.Group();load.position.y=6.35;g.add(load);box(load,1.4,1.3,1.4,0,0,0,m.crate);box(load,1.46,.14,1.46,0,.35,0,m.strap);box(load,1.46,.14,1.46,0,-.35,0,m.strap);
@@ -112,9 +116,9 @@ export function createExtras({T,scene,mat,palette,label,hemi,sun,aircraft,baseSk
    else if(!u.stop.done&&left>0&&left<=10&&Math.ceil(left)!==Math.ceil(left+dt))events.push({type:'tick'});}
   // Mailbags.
   for(const mm of masts){if(mm.taken)continue;mm.bag.rotation.y+=dt;mm.sign.scale.setScalar(4+Math.sin(time*3)*.3);
-   if(ctx.active&&ctx.hookWorld&&ctx.hookWorld.distanceTo(mm.hook)<2.6){mm.taken=true;mailTaken++;mm.bag.visible=false;mm.sign.material=mm.sign.material.clone();mm.sign.material.opacity=.35;mm.sign.material.transparent=true;spark(mm.hook);events.push({type:'mail',left:masts.length-mailTaken});}}
+   if(ctx.active&&ctx.hookWorld&&ctx.hookWorld.distanceTo(mm.hook)<(ctx.grab||2.6)){mm.taken=true;mailTaken++;mm.bag.visible=false;mm.sign.material=mm.sign.material.clone();mm.sign.material.opacity=.35;mm.sign.material.transparent=true;spark(mm.hook);events.push({type:'mail',left:masts.length-mailTaken});}}
   // Crates: hook the ring to lift the crate; it then hangs under the hook until released.
-  for(const c of crates){if(!c.taken){c.sign.scale.setScalar(4+Math.sin(time*3)*.3);if(ctx.active&&ctx.hookWorld&&ctx.hookWorld.distanceTo(c.hook)<(c.dropped?3.4:2.6)){c.taken=c.carried=true;c.sign.visible=false;if(c.flag)c.flag.visible=false;root.attach(c.load);spark(c.hook);events.push({type:'crate',goods:c.goods});}}
+  for(const c of crates){if(!c.taken){c.sign.scale.setScalar(4+Math.sin(time*3)*.3);if(ctx.active&&ctx.hookWorld&&ctx.hookWorld.distanceTo(c.hook)<(ctx.grab||2.6)+(c.dropped?.8:0)){c.taken=c.carried=true;c.sign.visible=false;if(c.flag)c.flag.visible=false;root.attach(c.load);spark(c.hook);events.push({type:'crate',goods:c.goods});}}
    if(c.carried){const at=ctx.hookWorld||tmp.copy(planeWorld).addScaledVector(state.normal,-1.6);c.load.position.copy(at).addScaledVector(state.normal,-(MAIL_ALT-1.2-6.35)-.1);c.load.quaternion.setFromUnitVectors(up,state.normal);}}
   // Gulls: fly in formation, scatter when struck.
   for(const fl of flocks){fl.cooldown=Math.max(0,fl.cooldown-dt);fl.scatter=Math.max(0,fl.scatter-dt);const pos=flockBirds(fl,time);
@@ -167,11 +171,11 @@ export function createExtras({T,scene,mat,palette,label,hemi,sun,aircraft,baseSk
  function summary(){if(!f)return '';const s=[];if(rings.length)s.push(`Rings ${ringsTaken}/${rings.length}.`);if(masts.length)s.push(`Mailbags ${mailTaken}/${masts.length}.`);if(flocks.length)s.push(birdHits?`Bird strikes ${birdHits}.`:'No bird strikes.');
   for(const u of urgent)s.push(lateAnnounced.has(u.stop)?`${u.stop.goods} arrived late.`:`${u.stop.goods} right on time +150.`);return s.join(' ');}
  // Solid things to crash into: mail masts.
- function obstacles(){return [...masts.map(mm=>({normal:mm.normal,top:13.2,radius:1.1,name:'a mail mast'})),...crates.map(c=>({normal:c.tower,top:c.taken||c.dropped?7:8.4,radius:1.7,name:'a crate tower'}))];}
+ function obstacles(){return [...masts.map(mm=>({normal:mm.normal,top:13.2+lift(mm.normal),radius:1.1,name:'a mail mast'})),...crates.map(c=>({normal:c.tower,top:(c.taken||c.dropped?7:8.4)+lift(c.tower),radius:1.7,name:'a crate tower'}))];}
  // Career navigation helpers (v0.70).
  function crateTarget(){const c=crates.find(c=>!c.taken);return c?{name:c.dropped?'Dropped crate · hook it again (mouse wheel) through its ring':'Crate pickup · lower your hook (mouse wheel) through the ring',normal:c.normal}:null;}
  // A missed crate that survived the fall: it sits where it landed (floating on water) with its ring up, ready to be hooked again.
- function crateDown(world){const c=crates.find(c=>c.taken&&!c.carried);if(!c)return;const n=world.clone().normalize(),fl=floorAt(n),alt=fl===WATER_FLOOR?.15:fl===BEACH_FLOOR?.55:1.5;
+ function crateDown(world){const c=crates.find(c=>c.taken&&!c.carried);if(!c)return;const n=world.clone().normalize(),fl=floorAt(n),alt=fl===WATER_FLOOR?.15:fl===BEACH_FLOOR?.55:groundHeight(n)-.5;
   c.normal=n;c.taken=false;c.dropped=true;c.load.visible=true;c.load.position.copy(n).multiplyScalar(RADIUS+alt+.65);c.load.quaternion.setFromUnitVectors(up,n);c.load.updateMatrixWorld(true);c.ring.getWorldPosition(c.hook);
   if(!c.flag){c.flag=label('C');c.flag.material=c.flag.material.clone();c.flag.material.color=new T.Color('#ffc27a');c.flag.position.y=6;c.load.add(c.flag);}c.flag.visible=true;}
  // A smashed crate: the crew stacks a fresh one back on the tower.

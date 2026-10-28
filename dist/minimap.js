@@ -1,4 +1,5 @@
 import {RADIUS} from './flight.js';
+import {DESERT} from './worlds.js';
 const dot=(a,b)=>a.x*b.x+a.y*b.y+a.z*b.z;
 export function projectPoint(normal,forward,point,range){
  const cosine=Math.max(-1,Math.min(1,dot(normal,point))),angle=Math.acos(cosine);
@@ -12,7 +13,7 @@ export function drawMinimap(canvas,state,islands,stops,depot,world=false,time=0,
  const screen=p=>({x:c+p.x*r,y:c+p.y*r});
  ctx.clearRect(0,0,size,size);ctx.save();ctx.beginPath();ctx.arc(c,c,r,0,Math.PI*2);ctx.clip();ctx.fillStyle='#103c4d';ctx.fillRect(0,0,size,size);
  ctx.strokeStyle='#83bcc426';ctx.lineWidth=1;for(const scale of [.33,.66,1]){ctx.beginPath();ctx.arc(c,c,r*scale,0,Math.PI*2);ctx.stroke();}ctx.beginPath();ctx.moveTo(c,9);ctx.lineTo(c,size-9);ctx.moveTo(9,c);ctx.lineTo(size-9,c);ctx.stroke();
- for(const island of islands){const outline=island.outline;if(!outline)continue;const center=project(island.n);if(center.angle>range+Math.atan(island.size/RADIUS))continue;ctx.beginPath();outline.forEach((v,i)=>{const p=screen(project(v));i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y);});ctx.closePath();ctx.fillStyle='#547f69';ctx.fill();ctx.strokeStyle='#a1b88c';ctx.lineWidth=1.3;ctx.stroke();}
+ for(const island of islands){const outline=island.outline;if(!outline)continue;const center=project(island.n);if(center.angle>range+Math.atan(island.size/RADIUS))continue;ctx.beginPath();outline.forEach((v,i)=>{const p=screen(project(v));i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y);});ctx.closePath();ctx.fillStyle=island.h?'#a85a3a':DESERT?'#9c7a4e':'#547f69';ctx.fill();ctx.strokeStyle=island.h?'#e3a26a':DESERT?'#d9b27a':'#a1b88c';ctx.lineWidth=1.3;ctx.stroke();}
  ctx.fillStyle='#ffe5a214';ctx.beginPath();ctx.moveTo(c,c);ctx.lineTo(c-17,c-44);ctx.lineTo(c+17,c-44);ctx.closePath();ctx.fill();
  const unfinished=stops.filter(s=>!s.done);let nearest=unfinished.reduce((a,b)=>!a||dot(state.normal,b.normal)>dot(state.normal,a.normal)?b:a,null);
  function marker(normal,color,label,done=false,selected=false,diamond=false){let p=project(normal);const length=Math.hypot(p.x,p.y);if(length>.92){p.x=p.x/length*.92;p.y=p.y/length*.92;}const a=screen(p);ctx.save();ctx.translate(a.x,a.y);ctx.strokeStyle=color;ctx.fillStyle=color;ctx.lineWidth=2;

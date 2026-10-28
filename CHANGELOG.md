@@ -1,5 +1,16 @@
 # Special Delivery changelog
 
+## v0.74 — Plane shop, pilot ranks, and World 2: Mesa Rojo
+
+Making money now buys something.
+- **Plane shop** (new upgrades.js, hangar tab): 8 parts, each with a one-time unlock fee (gated by pilot rank) and 5 upgrade levels at roughly doubling prices; small gains per level. See README for each part's effects. Upgrades show on the plane.
+- **Pilot rank** shown in the hangar with progress to the next rank (jobs done AND money earned).
+- **Hangar tabs:** Jobs / Plane shop / Worlds.
+- **Mesa Rojo** (new worlds.js): a desert canyon world unlocked with a ferry license (Senior Courier, Engine 3, Fuel tank 3, $100k). Mesas with cliffs (`mesaHeight` in hazards.js), canyon buttes, sand sea, hoodoos, dust devils, sandstorms, vultures, cacti, adobe houses, warm sky. Ground height is now per-point (`groundHeight`), so pads, crates, masts and parcel impacts sit on mesa tops. Job tiers per mesa; no boats; pay ×1.8.
+- The other world hangs in the sky of each world.
+- Flight model takes upgrade stats via `state.perf` (stock plane unchanged when absent). Legacy Endless Run/Training still Kestrel-only and hidden.
+- New tests: tests/upgrades.test.mjs and tests/mesa.test.mjs (75 total).
+
 ## v0.72 — Missed crates
 
 Play-test question: what happens if you hook the crate and miss the drop? It was a dead end (the job could never finish). Now it depends on the island tier:
