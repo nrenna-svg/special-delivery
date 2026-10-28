@@ -1,5 +1,11 @@
 # Special Delivery changelog
 
+## v0.86 — Title screen show reel
+
+- The plane now flies itself on the title screen: weaving S-turns, barrel rolls, loops, boost bursts and parachute parcel drops, at full speed (was a slow-motion straight line).
+- An orbiting camera circles it and keeps it right of the title text; the menu moved to a bar along the bottom, so nothing covers the plane.
+- Fixed dark text on the hosted page: the host's page wrapper sets `body{color:#000}`, which made the title and menu buttons dark. The game now sets its own light text colour.
+
 ## v0.84 — The title screen is back
 
 - Opens on the old title card with the plane flying around the planet behind it, now with a menu: Enter the hangar, Plane shop, Worlds, How to play, Settings, Credits (game.js `showTitle`, `leaveTitle`, `openPanel`).

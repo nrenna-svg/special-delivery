@@ -1,11 +1,11 @@
-# Special Delivery — v0.84
+# Special Delivery — v0.86
 
 Around the world. Right on time.
 
 A separate tiny-planet delivery prototype; the original 2D BI-PLANE BATTLE is unchanged. Static HTML/JS, no build step. Serve dist/ over HTTP. Three.js 0.180.0 is vendored with its MIT license.
 
 ## Title screen (v0.84)
-The game opens on the original title card ("Small plane. Special delivery.") with the plane flying slowly around the planet behind it (mode `intro`). Menu: **Enter the hangar** (or Enter), **Plane shop** and **Worlds** (open the hangar on that tab), **How to play**, **Settings** (sound, music, invert mouse, mouse sensitivity, show DEV tools; saved in `special-delivery-settings`) and **Credits**. The career line under the menu shows rank, cash, jobs done and the current world. In the hangar, **◂ Title screen** (top-left) goes back.
+The game opens on the original title card ("Small plane. Special delivery.") with a show reel behind it (v0.86, mode `intro`): the plane flies itself (S-turns, altitude hold, barrel rolls, loops, boost bursts and parachute parcel drops; `attractInput`) while an orbiting camera keeps it to the right of the title (`titleCamera`). The menu sits in a bar along the bottom. Menu: **Enter the hangar** (or Enter), **Plane shop** and **Worlds** (open the hangar on that tab), **How to play**, **Settings** (sound, music, invert mouse, mouse sensitivity, show DEV tools; saved in `special-delivery-settings`) and **Credits**. The career line under the menu shows rank, cash, jobs done and the current world. In the hangar, **◂ Title screen** (top-left) goes back.
 
 ## Career mode (v0.70, the game now)
 The game starts inside the Kestrel Courier Co. hangar on the home island. A corkboard job board offers four jobs; pick one and take it. The hangar doors slide open, the plane taxis out, turns onto the long runway and takes off (Space skips). Fly the job, come home and land: either touch down on the runway yourself for a cash bonus, or fly through the gold ring off the runway's +z end for an automatic landing with no bonus. The plane is towed back into the hangar and a pay ledger shows what you earned.

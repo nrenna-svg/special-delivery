@@ -1,6 +1,6 @@
 import * as T from './vendor/three.module.js';
 import {newFlight,advance,startStunt,RADIUS,fuelBurn,verticalSpeed} from './flight.js';
-import {newRoute,makeParcel,stepParcel,predictDrop,safeDropAltitude,RELEASE_DELAY,resolveDelivery,padAt} from './delivery.js';
+import {newRoute,makeParcel,stepParcel,predictDrop,safeDropAltitude,RELEASE_DELAY,resolveDelivery,padAt,releaseState} from './delivery.js';
 import {drawMinimap} from './minimap.js';
 import {LOAD_TIME,SWOOP_TIME,ROLL_TIME,CLIMB_TIME,CUTSCENE_TIME,GROUND_ALT,takeoffPose,parkedPose,applyPose} from './takeoff.js';
 import {createCrew,CAMERA_FOCUS} from './crew.js';
@@ -619,12 +619,12 @@ let settings={invert:false,sens:100,dev:true};try{settings={...settings,...JSON.
 function saveSettings(){try{localStorage.setItem(SETTINGS_KEY,JSON.stringify(settings));}catch{}applySettings();}
 function applySettings(){document.body.classList.toggle('nodev',!settings.dev);$('st-sensv').textContent=settings.sens+'%';}
 function showTitle(){job=null;reset();mode='intro';releaseMouse();keys={};document.body.classList.remove('inhangar','playing','pullup','missile');document.body.classList.add('titlescreen');
- $('hangarui').hidden=true;$('titlepanel').hidden=true;$('overlay').hidden=false;state.altitude=17;state.speed=23;camera.fov=78;camera.updateProjectionMatrix();snapChaseCamera();
+ $('hangarui').hidden=true;$('titlepanel').hidden=true;$('overlay').hidden=false;state.altitude=SAFE_ALT;state.speed=23;state.throttle=.45;attract.t=0;attract.next=3;camera.fov=70;camera.updateProjectionMatrix();snapChaseCamera();
  $('overlay').querySelector('.eyebrow').textContent='AROUND THE WORLD. RIGHT ON TIME.';$('overlay').querySelector('h1').innerHTML='Small plane.<br><em>Special</em> delivery.';
  $('introtext').innerHTML=`Take courier jobs from the hangar board and fly cargo across ${HERE.name==='Kestrel'?'a little ocean planet':'the red mesas of '+HERE.name}. The harder the island, the bigger the pay, and the bigger the risk.`;
  $('tm-career').textContent=career.flights?`${RANKS[rankOf(career)].name} · ${money(career.cash)} in the bank · ${career.jobsDone} job${career.jobsDone===1?'':'s'} done · ${HERE.name}`:'A new career is waiting in the hangar.';
  $('pause').innerHTML='PAUSE <kbd>P</kbd>';}
-function leaveTitle(tab='jobs'){audio.unlock();if(mode!=='intro')return;fadeTo(()=>{document.body.classList.remove('titlescreen');hangarTab=tab;enterHangar();});}
+function leaveTitle(tab='jobs'){audio.unlock();if(mode!=='intro')return;fadeTo(()=>{clearAttract();document.body.classList.remove('titlescreen');hangarTab=tab;enterHangar();});}
 function openPanel(id){audio.unlock();$('titlepanel').hidden=false;for(const k of ['howto','settings','credits'])$('tp-'+k).hidden=k!==id;
  if(id==='settings'){$('st-sfx').checked=audio.sfxOn;$('st-music').checked=audio.musicOn;$('st-invert').checked=settings.invert;$('st-sens').value=settings.sens;$('st-dev').checked=settings.dev;applySettings();}}
 $('tm-hangar').onclick=()=>leaveTitle('jobs');$('tm-shop').onclick=()=>leaveTitle('shop');$('tm-worlds').onclick=()=>leaveTitle('worlds');
@@ -634,6 +634,29 @@ $('st-invert').onchange=e=>{settings.invert=e.target.checked;saveSettings();};$(
 $('tohome').onclick=()=>{if(mode!=='hangar'||fxPart)return;fadeTo(showTitle);};
 window.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('titlepanel').hidden)$('titlepanel').hidden=true;else if(e.key==='Enter'&&mode==='intro'&&$('titlepanel').hidden)leaveTitle('jobs');});
 applySettings();
+// ── Title-screen show reel (v0.86): the plane flies itself, weaving, rolling, looping and dropping
+// parachute parcels, while the camera circles it and keeps it to the right of the title text.
+const attract={t:0,next:4,step:0,orbit:0,parcels:[]};
+const camPos=new T.Vector3(),camAim=new T.Vector3(),tRight=new T.Vector3(),tUp=new T.Vector3();
+const SAFE_ALT=IN_DESERT?28:19;
+function attractInput(dt){const a=attract;a.t+=dt;a.next-=dt;
+ // Gentle S-turns, and hold a comfortable altitude.
+ const turn=state.stunt?0:Math.sin(a.t*.32)*.55+Math.sin(a.t*.11)*.25,climb=state.stunt?0:Math.max(-1,Math.min(1,(SAFE_ALT+Math.sin(a.t*.2)*4-state.altitude)*.25));
+ if(a.next<=0&&!state.stunt){const moves=['roll-1','drop','loop','roll1','drop','boost'];const m=moves[a.step++%moves.length];a.next=3.2+Math.random()*1.6;
+  if(m==='loop'&&state.altitude>=16&&state.speed>=17)startStunt(state,'loop');else if(m.startsWith('roll'))startStunt(state,'roll',m==='roll1'?1:-1);
+  else if(m==='drop'){const p=makeParcel(releaseState(state));Object.assign(p,parcelModel());p.mesh.position.copy(p.position);a.parcels.push(p);}
+  else if(m==='boost')a.boostUntil=a.t+2.2;}
+ return {turn,climb,boost:a.t<(a.boostUntil||0),throttle:0,floor:7};}
+function attractParcels(dt){const list=attract.parcels;for(let i=list.length-1;i>=0;i--){const p=list[i];let hit=false;for(let t=0;t<dt;t+=1/60){if(stepParcel(p,Math.min(1/60,dt-t))){hit=true;break;}}
+  p.mesh.position.copy(p.position);p.mesh.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),p.position.clone().normalize());p.canopy.visible=p.inflation>0;p.canopy.scale.set(Math.max(.04,p.inflation),.6+.4*p.inflation,Math.max(.04,p.inflation));
+  if(hit||p.age>30){disposeParcel(p);list.splice(i,1);}}}
+function clearAttract(){for(const p of attract.parcels)disposeParcel(p);attract.parcels.length=0;}
+// Orbiting show-reel camera. On wide screens the plane sits right of center, clear of the title.
+function titleCamera(dt,position){attract.orbit+=dt*.16;const a=attract.orbit;tRight.crossVectors(state.forward,state.normal).normalize();
+ const dist=15+Math.sin(a*.7)*3;camPos.copy(position).addScaledVector(state.forward,-Math.cos(a)*dist).addScaledVector(tRight,Math.sin(a)*dist).addScaledVector(state.normal,4.5+Math.sin(a*.5)*2);
+ camera.position.lerp(camPos,1-Math.exp(-2.5*dt));camera.up.copy(state.normal);
+ const fwd=tUp.copy(position).sub(camera.position).normalize(),camRight=new T.Vector3().crossVectors(fwd,state.normal).normalize();
+ camAim.copy(position).addScaledVector(camRight,innerWidth>760?-5.5:0).addScaledVector(state.normal,innerWidth>760?0:-3);camera.lookAt(camAim);}
 
 function frame(now){requestAnimationFrame(frame);const dt=Math.min((now-last)/1000,.04);last=now;let camHandled=false;
  if(mode==='cutscene')camHandled=updateCutscene(dt);
@@ -645,11 +668,11 @@ function frame(now){requestAnimationFrame(frame);const dt=Math.min((now-last)/10
  else if(mode==='flight'||mode==='intro'){
   const steer=mode==='flight'&&mouse.active,clamp1=v=>Math.max(-1,Math.min(1,v));
   {const w=extras.carryWeight();state.perf=w?{...perf,speed:perf.speed*(1-Math.max(.02,.07*w-.03*(perf.strength-w))),climb:perf.climb*(1-.05*w)}:perf;}
-  advance(state,{turn:mode==='flight'?clamp1(Number(!!keys.right)-Number(!!keys.left)+(steer?mouseAxis(mouse.x):0)+extras.buffet.turn+Math.sin(worldTime*8.1)*seaLife.pull(state.normal,worldTime)*1.3):0,climb:mode==='flight'?clamp1(Number(!!keys.up)-Number(!!keys.down)+(steer?mouseAxis(settings.invert?mouse.y:-mouse.y):0)+extras.buffet.climb+Math.sin(worldTime*6.3+1)*seaLife.pull(state.normal,worldTime)):0,boost:mode==='flight'&&keys.boost&&state.fuel>0,throttle:mode==='flight'?(Number(!!keys.faster)-Number(!!keys.slower)):0,engineOut:mode==='flight'&&state.fuel<=0,floor:mode==='flight'?0:7},dt*(mode==='intro'?.28:1));
+  advance(state,mode==='intro'?attractInput(dt):{turn:mode==='flight'?clamp1(Number(!!keys.right)-Number(!!keys.left)+(steer?mouseAxis(mouse.x):0)+extras.buffet.turn+Math.sin(worldTime*8.1)*seaLife.pull(state.normal,worldTime)*1.3):0,climb:mode==='flight'?clamp1(Number(!!keys.up)-Number(!!keys.down)+(steer?mouseAxis(settings.invert?mouse.y:-mouse.y):0)+extras.buffet.climb+Math.sin(worldTime*6.3+1)*seaLife.pull(state.normal,worldTime)):0,boost:mode==='flight'&&keys.boost&&state.fuel>0,throttle:mode==='flight'?(Number(!!keys.faster)-Number(!!keys.slower)):0,engineOut:mode==='flight'&&state.fuel<=0,floor:mode==='flight'?0:7},dt);
   if(mode==='flight'){updateFuelAndTerrain(dt);if(mode==='flight'){careerFlight(dt);bingoCheck();}if(run.pendingNext>0&&(run.pendingNext-=dt)<=0)nextDay();}
   prop.rotation.z+=dt*(state.fuel<=0&&mode==='flight'?Math.max(0,8):keys.boost?95:65);clouds.rotation.y+=dt*.001;
  }
- const position=state.normal.clone().multiplyScalar(RADIUS+state.altitude);aircraft.position.copy(position);
+ const position=state.normal.clone().multiplyScalar(RADIUS+state.altitude);aircraft.position.copy(position);if(mode==='intro'){titleCamera(dt,position);attractParcels(dt);camHandled=true;}
  right.crossVectors(state.forward,state.normal).normalize();up.copy(state.normal);back.copy(state.forward).negate();basis.makeBasis(right,up,back);aircraft.quaternion.setFromRotationMatrix(basis);
  if(mode!=='crash'){visual.rotation.z=-state.bank-state.roll;visual.rotation.x=state.pitch;}
  if(!camHandled&&!(mode==='paused'&&(pausedFrom==='cutscene'&&cine.t<LOAD_TIME+SWOOP_TIME||pausedFrom==='landing'&&landing?.stopped||pausedFrom==='rollout'))&&mode!=='complete'){target.copy(position).addScaledVector(state.forward,-17).addScaledVector(state.normal,12);
