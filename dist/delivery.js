@@ -27,13 +27,15 @@ export function releaseState(s){const copy={...s,normal:s.normal.clone(),forward
 export function predictDrop(s,wind=null,windTime=0){const p=makeParcel(releaseState(s));p.wind=wind;p.windTime=windTime;for(let i=0;i<6000;i++){if(stepParcel(p,1/120))return {position:p.position.normalize().multiplyScalar(IMPACT_RADIUS+.08),broken:p.broken,time:RELEASE_DELAY+(i+1)/120};}return null;}
 export function predictImpact(s){return predictDrop(s)?.position||null;}
 export function safeDropAltitude(s){const released=releaseState({...s,altitude:60});let velocity=Math.min(0,verticalSpeed(released))-1,fall=0;for(let age=0;age<4;age+=1/120){const inflation=Math.max(0,Math.min(1,(age-CHUTE_DELAY)/INFLATION_TIME));velocity-=12/120;if(inflation)velocity+=(-3.2-velocity)*(1-Math.exp(-8*inflation/120));fall-=velocity/120;if(inflation>=.95&&-velocity<=5.5)break;}return Math.ceil(3.5+fall+Math.max(0,60-released.altitude)+2);}
-export const PAD_RADIUS=8;
+export const PAD_RADIUS=8, BOAT_PAD_RADIUS=13;
+// Boats are moving targets, so their catch zone is wider than a fixed pad.
+export const padRadius=s=>s.motion?BOAT_PAD_RADIUS:PAD_RADIUS;
 // The open (undelivered) stop a landing point falls on, or null. Does not change the route.
 // at: optional route time to check against (moving boat stops are checked where they will be).
-export function padAt(route,position,at=null){const n=position.clone().normalize();for(const s of route.stops){if(s.done)continue;const sn=at===null?s.normal:stopNormalAt(s,at);if(Math.acos(Math.max(-1,Math.min(1,sn.dot(n))))*IMPACT_RADIUS<=PAD_RADIUS)return s;}return null;}
-export function resolveDelivery(route,position,parcel){if(parcel?.broken)return null;let closest=null,distance=Infinity;for(const s of route.stops){if(s.done)continue;const d=Math.acos(Math.max(-1,Math.min(1,s.normal.dot(position.clone().normalize()))))*IMPACT_RADIUS;if(d<distance){distance=d;closest=s;}}
- if(!closest||distance>PAD_RADIUS)return null;
- closest.done=true;route.delivered++;const accuracy=Math.max(0,Math.round(100*(1-distance/PAD_RADIUS)));let points=100+accuracy+Math.round(route.condition);
+export function padAt(route,position,at=null){const n=position.clone().normalize();for(const s of route.stops){if(s.done)continue;const sn=at===null?s.normal:stopNormalAt(s,at);if(Math.acos(Math.max(-1,Math.min(1,sn.dot(n))))*IMPACT_RADIUS<=padRadius(s))return s;}return null;}
+export function resolveDelivery(route,position,parcel){if(parcel?.broken)return null;let closest=null,distance=Infinity;for(const s of route.stops){if(s.done)continue;const d=Math.acos(Math.max(-1,Math.min(1,s.normal.dot(position.clone().normalize()))))*IMPACT_RADIUS;if(d>padRadius(s))continue;if(d/padRadius(s)<(closest?distance/padRadius(closest):Infinity)){distance=d;closest=s;}}
+ if(!closest)return null;
+ closest.done=true;route.delivered++;const accuracy=Math.max(0,Math.round(100*(1-distance/padRadius(closest))));let points=100+accuracy+Math.round(route.condition);
  // Urgent parcels earn a bonus when delivered before their clock runs out.
  const onTime=closest.urgent?route.elapsed<=closest.urgent.seconds:null;if(onTime)points+=150;
  route.score+=points;route.complete=route.delivered===route.stops.length;return {name:closest.name,goods:closest.goods,id:closest.id,accuracy,points,onTime};

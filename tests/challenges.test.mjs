@@ -37,3 +37,11 @@ test('flocks, storms, mail and the night sky behave',()=>{
  for(const fl of dayFeatures(4).flocks)for(const st of dayFeatures(4).storms)assert.ok(arc(fl.center,st.center)>st.radius+fl.radius+15,'gulls inside a storm');
  assert.deepEqual(skyAt(0).bg,[.514,.741,.804]);assert.ok(skyAt(1).stars===1&&skyAt(1).sun<skyAt(0).sun);
 });
+
+test('boat stops have a wider catch zone than fixed pads and sail slower',async()=>{
+ const {padRadius,PAD_RADIUS,BOAT_PAD_RADIUS,resolveDelivery}=await import('../dist/delivery.js');
+ const r=newRoute(dayStops(2)),boat=r.stops.find(s=>s.motion),pad=r.stops.find(s=>!s.motion);
+ assert.equal(padRadius(boat),BOAT_PAD_RADIUS);assert.equal(padRadius(pad),PAD_RADIUS);assert.ok(BOAT_PAD_RADIUS>PAD_RADIUS);
+ const near=offsetNormal(boat.normal,11,0).multiplyScalar(IMPACT_RADIUS);assert.equal(resolveDelivery(r,near,{broken:false})?.name,boat.name);
+ for(const s of dayStops(2).filter(s=>s.motion))assert.ok(2*Math.PI*s.motion.radius/s.motion.period<1.6,`${s.name} is too fast`);
+});

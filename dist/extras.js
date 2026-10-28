@@ -3,13 +3,14 @@
 // lightning, and the sunset-to-night sky. Game rules live in challenges.js; this file reports what
 // happened each frame as events for game.js to score and announce.
 import {RADIUS} from './flight.js';
+import {BOAT_PAD_RADIUS} from './delivery.js';
 export const FUEL_ALT=13;
 import {ringHit,ringScore,STREAK_WINDOW,windAt,boatNormal,flockBirds,BIRD_HIT,BIRD_DAMAGE,stormStrength,skyAt,MAIL_ALT,urgentLeft,formatClock} from './challenges.js';
 
 export function createExtras({T,scene,mat,palette,label,hemi,sun,aircraft,baseSky}){
  const up=new T.Vector3(0,1,0),tmp=new T.Vector3(),tmp2=new T.Vector3(),basis=new T.Matrix4();
  let root=null,f=null,route=null,pads=null,fuelHoops=[],rings=[],streak=0,lastRing=-99,ringsTaken=0,boats=[],socks=[],streaks=[],masts=[],flocks=[],storms=[],urgent=[],sparks=[],feathers=[];
- let birdHits=0,stormNotice=-99,flash=0,stars=null,lamp=null,glow=0,buffet={turn:0,climb:0},inStorm=0,time=0,lateAnnounced=new Set(),mailTaken=0;
+ let leadTime=null,birdHits=0,stormNotice=-99,flash=0,stars=null,lamp=null,glow=0,buffet={turn:0,climb:0},inStorm=0,time=0,lateAnnounced=new Set(),mailTaken=0;
  const m={ring:mat('#ffd36a',{emissive:'#ffb52c',emissiveIntensity:.8}),hull:mat('#c94f3d'),hull2:mat('#2f6f8c'),deck:mat('#d9c08a'),cabin:mat('#f2ead6'),
   sock:mat('#ff7a3a',{side:T.DoubleSide}),mast:[mat('#d8473a'),mat('#f4efe2')],bag:mat('#9b7448'),rope:mat('#2b3a40'),
   fuel:mat('#5fe39a',{emissive:'#1fae5c',emissiveIntensity:.7}),bird:mat('#f3f1ea'),birdTip:mat('#3a4750'),cloud:mat('#4d5866',{flatShading:true}),cloud2:mat('#626e7d',{flatShading:true}),rain:mat('#9fb7d6',{transparent:true,opacity:.45}),
@@ -37,7 +38,11 @@ export function createExtras({T,scene,mat,palette,label,hemi,sun,aircraft,baseSk
    const L=big?17:12,W=big?9:6.5;box(g,W,2,L,0,1,0,big?m.hull:m.hull2);box(g,W*.92,.25,L*.95,0,2.1,0,m.deck);const bow=add(new T.ConeGeometry(W*.5,3.4,4),big?m.hull:m.hull2,g);bow.rotation.x=-Math.PI/2;bow.rotation.y=Math.PI/4;bow.position.set(0,1.05,-L/2-1.6);bow.scale.set(1,1,.55);
    box(g,W*.5,2,L*.22,0,3.1,L*.36,m.cabin);box(g,.4,2.6,.4,0,4.3,L*.36,m.rope);
    const wake=[];for(let k=0;k<6;k++){const w=box(g,W*(.6+k*.12),.06,1.4,0,.08,L/2+1.5+k*2.2,palette.white);w.material=new T.MeshBasicMaterial({color:'#ffffff',transparent:true,opacity:.45-k*.06});wake.push(w);}
-   boats.push({stop:s,i,g,wake});});
+   // Lead marker: a ghost ring on the water where the boat will be when a parcel dropped now lands.
+   const lead=new T.Group();root.add(lead);const ghost=new T.MeshBasicMaterial({color:'#5fe39a',transparent:true,opacity:.55,depthWrite:false});
+   const lr=add(new T.TorusGeometry(BOAT_PAD_RADIUS,.35,6,56),ghost,lead);lr.rotation.x=Math.PI/2;const li=add(new T.TorusGeometry(BOAT_PAD_RADIUS*.45,.25,6,40),ghost,lead);li.rotation.x=Math.PI/2;
+   const ls=label('DROP HERE');ls.material=ls.material.clone();ls.material.color=new T.Color('#b9ffcf');ls.position.y=4;ls.scale.set(10,2.5,1);lead.add(ls);lead.visible=false;
+   boats.push({stop:s,i,g,wake,lead,ghost});});
   // Urgent stops get a pulsing red badge over the pad.
   route.stops.forEach((s,i)=>{if(!s.urgent)return;const sp=label('!');sp.material=sp.material.clone();sp.material.color=new T.Color('#ff7b6b');sp.position.y=10;sp.scale.set(5,5,1);pads[i].g.add(sp);urgent.push({stop:s,sprite:sp});});
   // Mailbag masts.
@@ -84,6 +89,7 @@ export function createExtras({T,scene,mat,palette,label,hemi,sun,aircraft,baseSk
   if(streak&&t-lastRing>STREAK_WINDOW)streak=0;
   // Boats move their stop and its pad.
   for(const b of boats){const n=boatNormal(b.stop.motion,t),n2=boatNormal(b.stop.motion,t+.2),fwd=n2.sub(n).normalize();b.stop.normal.copy(n);orient(b.g,n,0,fwd);orient(pads[b.i].g,n,2.6,fwd);
+   if(b.stop.done||leadTime===null)b.lead.visible=false;else{b.lead.visible=true;orient(b.lead,boatNormal(b.stop.motion,t+leadTime),.6);b.ghost.opacity=.4+.25*Math.sin(time*5);}
    b.wake.forEach((w,k)=>{w.material.opacity=Math.max(0,.45-k*.06)*(0.8+.2*Math.sin(time*4+k));});}
   // Windsocks flutter; streaks drift past the plane to show the wind.
   if(f.wind){for(const s of socks)s.sock.rotation.y=s.base+Math.sin(time*5+s.base)*.08;
@@ -151,5 +157,7 @@ export function createExtras({T,scene,mat,palette,label,hemi,sun,aircraft,baseSk
  function nearestFuel(normal){let best=null,bd=Infinity;for(const h of fuelHoops){const d=h.normal.distanceTo(normal);if(d<bd){bd=d;best=h;}}return best;}
  // World positions of hook targets and birds (used by automated play tests).
  function targets(){return {hooks:masts.map(mm=>mm.hook.clone()),birds:flocks.flatMap(fl=>fl.birds.map(b=>b.g.position.clone())),storms:storms.map(st=>st.center.clone()),urgent:urgent.map(u=>u.sprite.visible)};}
- return {start,clear,update,status,navTarget,markers,summary,targets,obstacles,nearestFuel,get wind(){return f?.wind||null;},get buffet(){return buffet;},get mailLeft(){return masts.length-mailTaken;},get hasMail(){return masts.length>0;},get windy(){return !!f?.wind;}};
+ // Seconds until a parcel dropped now would land (null hides the boat lead markers).
+ function setLead(seconds){leadTime=seconds;}
+ return {start,clear,update,setLead,status,navTarget,markers,summary,targets,obstacles,nearestFuel,get wind(){return f?.wind||null;},get buffet(){return buffet;},get mailLeft(){return masts.length-mailTaken;},get hasMail(){return masts.length>0;},get windy(){return !!f?.wind;}};
 }

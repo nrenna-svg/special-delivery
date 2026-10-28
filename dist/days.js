@@ -48,8 +48,8 @@ export const DAYS=[
  {title:'Atoll Hopping',brief:'Two of today\u2019s stops are boats under way, the turtle rescue needs its medicine fast, and waterspouts are forming at sea.',par:550,features:{spouts:true,fuel:[{island:'WESTERN REACH',x:0,z:-13}]},stops:[
   {name:'Puffin Rocks observatory',goods:'Bird seed',island:'PUFFIN ROCKS',x:-6,z:4},
   {name:'Turtle rescue',goods:'Medicine',island:'SOUTHERN ATOLLS',x:0,z:12,urgent:125},
-  {name:'Island ferry Gull',goods:'Deck chairs',boat:{center:[-.76,-.15,-.64],radius:26,period:80,phase:0,dir:1}},
-  {name:'Fishing boat Marlin',goods:'New nets',boat:{center:[-.76,-.15,-.64],radius:11,period:46,phase:2.4,dir:-1}},
+  {name:'Island ferry Gull',goods:'Deck chairs',boat:{center:[-.76,-.15,-.64],radius:26,period:115,phase:0,dir:1}},
+  {name:'Fishing boat Marlin',goods:'New nets',boat:{center:[-.76,-.15,-.64],radius:15,period:85,phase:2.4,dir:-1}},
   {name:'Western ferry dock',goods:'Ship\u2019s bell',island:'WESTERN REACH',x:-10,z:-5},
   {name:'Cliffside chapel',goods:'Candles',island:'WESTERN REACH',x:10,z:6}]},
  {title:'Coast to Coast',brief:'Snag three mailbags from the striped masts: scroll down to lower your hook line and sweep it through each bag. Watch for gull flocks.',par:700,features:{mail:[{island:'LIGHTHOUSE COAST',x:-1,z:-1},{island:'THE HOMEWARD ISLES',x:8,z:-10},{island:'EASTERN WILDS',x:-14,z:8}],birds:{legs:true,count:3},spouts:true,fuel:[{island:'THE HOMEWARD ISLES',x:-6,z:10},{island:'EASTERN WILDS',x:12,z:-10}]},stops:[

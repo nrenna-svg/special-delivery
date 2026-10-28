@@ -1,5 +1,14 @@
 # Special Delivery changelog
 
+## v0.66 — Easier boat drops
+
+Play-testing found the drops onto moving boats too hard: the parcel takes a few seconds to fall, so you had to guess where the boat would be when it landed.
+- **Lead marker:** each boat stop now shows a pulsing green "DROP HERE" ring on the water ahead of the boat, at the spot where the boat will be when a parcel dropped right now lands. Line the gold landing preview up with it and drop. The preview also turns green when it's on target. (extras.js `setLead`, called from game.js every frame with the predicted fall time.)
+- **Bigger catch zone:** boats now accept parcels within 13 m (`BOAT_PAD_RADIUS`); fixed pads are still 8 m. `padRadius(stop)` in delivery.js is used by `padAt` and `resolveDelivery`, and accuracy is scored against each stop's own radius.
+- **Slower boats:** the ferry Gull's loop takes 115 s (was 80 s). The fishing boat Marlin sails a wider, gentler 15 m circle in 85 s (was a tight 11 m circle in 46 s).
+- **Hint line:** when the nearest stop is a boat, the dispatch hint explains the lead marker.
+- New test: boats have the wider catch zone and stay under the speed cap.
+
 ## v0.64 — Runs without landings (2026-10-27, made with Claude; +0.02)
 - Endless runs never land: days change over in the air at dawn, planned from where the plane is; fuel carries over, parcels are air-dropped back to 12. Landing gate is training-only.
 - run.js: planDay(day, seed, from); no home leg in the time estimate; nearest hoop to each day's route always kept. days.js buildFeatures(stops, f, from).
