@@ -125,3 +125,29 @@ body:has(#overlay:not([hidden])) :is(.dispatch,.actions,.minimap,.instruments,.j
 #dawn{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(ellipse at 50% 70%,#fff4d6,#ffd9a0 45%,#f4a46a)}
 #dawn.go{animation:dawn 2.2s ease-out}@keyframes dawn{0%{opacity:0}25%{opacity:.85}100%{opacity:0}}
 @media(prefers-reduced-motion:reduce){#dawn.go{animation-duration:.8s}}
+
+/* v0.68 clean HUD: more open sky in the middle. Only what you need while flying; H shows everything. */
+footer{transition:opacity .6s}
+body.playing:not(.hints):not(.fullhud) footer{opacity:0;pointer-events:none}
+body.playing .location{display:none}
+body:not(.fullhud) #routehint{display:none}
+.dispatch.boat #routehint{display:block;color:#b9ffcf;opacity:1}
+body:not(.fullhud) .dispatch.far .dropalt{display:none}
+body:not(.fullhud) .minimap small{display:none}
+body.playing header .brand small{display:none}
+body.playing .tools button{opacity:.8}
+@media(pointer:fine){body:not(.fullhud) .actions{display:none}}
+@media(min-width:651px){
+ body.playing header{top:18px}
+ body.playing .tools button{padding:7px 11px;font-size:9px}
+ .dispatch{top:76px;padding:10px 14px;max-width:340px}
+ .dispatch p{margin:6px 0}
+ .instruments{bottom:22px;gap:24px;padding:8px 14px}
+ .instruments strong{font-size:30px}
+ .instruments small{font-size:8px;margin-bottom:1px}
+ .journey{bottom:22px;width:210px;padding:9px 14px}
+ body.playing.hints footer,body.playing.fullhud footer{bottom:auto;top:auto;bottom:96px;left:50%;right:auto;transform:translateX(-50%);background:#103c4bc9;border-radius:8px;padding:8px 14px;white-space:nowrap}
+ body.fullhud .actions{bottom:158px}
+}
+@media(min-width:901px){.minimap{width:150px;top:70px}}
+@media(min-width:651px){.dispatch{max-width:400px}.dispatch #bearing{white-space:nowrap}}

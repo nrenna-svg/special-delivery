@@ -1,5 +1,16 @@
 # Special Delivery changelog
 
+## v0.68 — Clean HUD
+
+Play-testing: the screen was too busy, leaving too little open sky in the middle. Most of this is CSS appended at the end of style.css (search "v0.68 clean HUD").
+- **Action buttons hidden on keyboard-and-mouse computers** (DROP / ROLL / LOOP / throttle slider): the keys do the same. They still show on touch screens (`pointer:coarse`).
+- **Control hints fade out:** the footer key bar shows as a small centered strip for 8 s after takeoff or resuming, then fades (`flashHints()` in game.js, body class `hints`).
+- **H toggles the full HUD** (body class `fullhud`): brings back the buttons, key hints, map legend, drop hint and drop-altitude bar.
+- **Smaller, tighter panels:** instruments and the deliveries/day-clock panel sit lower and are shorter, the dispatch panel moved up, the minimap is smaller with no legend, the header drops its subtitle in flight, and the "KESTREL COURIER / island" line is gone in flight.
+- **Drop-altitude bar only near a stop:** hidden while the next stop is more than 400 m away (dispatch class `far`), unless a drop is pending.
+- **Drop hint line** is hidden except when the next stop is a moving boat (dispatch class `boat`), where it explains the green lead ring.
+- Phone layouts are unchanged apart from the hidden lines.
+
 ## v0.66 — Easier boat drops
 
 Play-testing found the drops onto moving boats too hard: the parcel takes a few seconds to fall, so you had to guess where the boat would be when it landed.

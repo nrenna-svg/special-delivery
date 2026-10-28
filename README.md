@@ -1,4 +1,4 @@
-# Special Delivery — v0.66
+# Special Delivery — v0.68
 
 Around the world. Right on time.
 
@@ -17,7 +17,7 @@ A separate tiny-planet delivery prototype; the original 2D BI-PLANE BATTLE is un
 
 Deliver to five numbered pads on Kestrel Island, in any order. The gold ring predicts cargo impact. Pads accept drops within 8 world units. Fly through the blue depot hoop to refill 12 parcels and restore cargo condition. Stunts slightly reduce fragile cargo condition. Score reflects landing accuracy, cargo condition, and a route completion time bonus. Misses use a parcel; refill or restart to try again. Personal best is stored only in this browser.
 
-Version increments: 0.04 throttle/momentum, 0.06 stunts, 0.08 five-stop delivery route. 0.14 opening cutscene, 0.20 delivery celebrations + sound/music + homecoming landing, 0.22 delivery days, 0.38 eight day challenges (rings, wind, boats, urgent parcels, mailbags, gulls, storms, nightfall), 0.42 mouse steering and hook-line winch, 0.46 fuel and crashes, 0.54 graphics upgrade, sea traffic and life, sea stacks, waterspouts, 0.58 bigger planet and three new islands, 0.62 endless run mode with scarce fuel, 0.64 runs without landings, 0.66 easier boat drops (lead marker, wider catch zone, slower boats). Renaming is copy-only.
+Version increments: 0.04 throttle/momentum, 0.06 stunts, 0.08 five-stop delivery route. 0.14 opening cutscene, 0.20 delivery celebrations + sound/music + homecoming landing, 0.22 delivery days, 0.38 eight day challenges (rings, wind, boats, urgent parcels, mailbags, gulls, storms, nightfall), 0.42 mouse steering and hook-line winch, 0.46 fuel and crashes, 0.54 graphics upgrade, sea traffic and life, sea stacks, waterspouts, 0.58 bigger planet and three new islands, 0.62 endless run mode with scarce fuel, 0.64 runs without landings, 0.66 easier boat drops (lead marker, wider catch zone, slower boats), 0.68 clean HUD. Renaming is copy-only.
 
 Run `node --test tests/*.test.mjs`. Tests cover spherical flight, altitude constraints, stunt recovery, throttle, cargo momentum/prediction, duplicate scoring, and route completion.
 
