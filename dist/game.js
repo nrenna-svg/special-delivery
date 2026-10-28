@@ -392,7 +392,7 @@ function updateCutscene(dt){
 // ── Career (v0.70): hangar job board, rollout, flying the job, landing, payout ───────────────
 function careerPlan(){if(job)return jobRoute(job);if(LEGACY_MODES){curDay=currentDay();return curDay;}return {stops:[],features:NO_FEATURES};}
 const titleCase=t=>t.toLowerCase().replace(/(^|\s)\S/g,c=>c.toUpperCase());
-function careerHud(){rankHud();$('cash').textContent=money(career.cash);$('jobsdone').textContent=career.jobsDone;const b=loadBestCareer();$('bestcareer').textContent=b?money(b.earned):'—';}
+function careerHud(){devRefill();rankHud();$('cash').textContent=money(career.cash);$('jobsdone').textContent=career.jobsDone;const b=loadBestCareer();$('bestcareer').textContent=b?money(b.earned):'—';}
 function renderBoard(){board=jobBoard(career.boardSeed);selectedJob=Math.max(0,Math.min(selectedJob,board.length-1));const list=$('jobs');list.innerHTML='';
  board.forEach((j,i)=>{const t=TIERS[j.tier],b=document.createElement('button');b.className='job'+(i===selectedJob?' selected':'');b.setAttribute('role','option');b.setAttribute('aria-selected',String(i===selectedJob));
   b.style.setProperty('--tilt',`${((i*37)%5-2)*.45}deg`);b.style.setProperty('--tc',t.color);
@@ -403,7 +403,7 @@ function renderBoard(){board=jobBoard(career.boardSeed);selectedJob=Math.max(0,M
 function showLedger(d){$('board').hidden=true;$('ledger').hidden=false;$('ledgertitle').textContent=d.title;$('ledgerhead').textContent=d.head;
  $('ledgerlines').innerHTML=d.lines.map(l=>`<div><span>${l.label}</span><b class="${l.amount<0?'neg':'pos'}">${money(l.amount)}</b></div>`).join('')+`<div class="total"><span>${d.totalLabel}</span><span>${money(d.total)}</span></div>`+(d.note?`<p>${d.note}</p>`:'');
  $('ledgerok').innerHTML=d.over?'START A NEW CAREER <span>↗</span>':'BACK TO THE BOARD <span>↗</span>';
- $('ledgerok').onclick=()=>{if(d.over){career=saveCareer(newCareer());perf=stats(career);state.perf=perf;planeLook();}$('ledger').hidden=true;$('board').hidden=false;careerHud();renderBoard();$('takejob').focus();};}
+ $('ledgerok').onclick=()=>{if(d.over){career=saveCareer(newCareer());if(HERE.id!=='kestrel'){setWorld('kestrel');location.reload();return;}perf=stats(career);state.perf=perf;planeLook();}$('ledger').hidden=true;$('board').hidden=false;careerHud();renderBoard();$('takejob').focus();};}
 // Park the plane in the hangar and show the board (or a ledger first).
 function enterHangar(ledger=null){job=null;reset();mode='hangar';releaseMouse();keys={};document.body.classList.remove('playing','pullup');document.body.classList.add('inhangar');
  $('overlay').hidden=true;$('hangarui').hidden=false;applyRunwayPose(state,rolloutPose(0));state.speed=0;state.fuel=100;field.setDoors(0);gateGroup.visible=false;aim.visible=false;
@@ -560,6 +560,25 @@ function updateWorkshop(dt){
   if(f.t>=f.dur){f.g.scale.setScalar(1);visual.position.y=0;fxPart=null;}}
  for(let i=fxSparks.length-1;i>=0;i--){const s=fxSparks[i];s.life-=dt;s.v.addScaledVector(state.normal,-9*dt);s.mesh.position.addScaledVector(s.v,dt);s.mesh.scale.setScalar(Math.max(.01,s.life*2));if(s.life<=0){scene.remove(s.mesh);s.mesh.geometry.dispose();fxSparks.splice(i,1);}}}
 planeLook();
+
+// ── DEV tools (v0.78): play-testing helpers in the hangar (bottom-left DEV button) ──────────
+$('devbtn').onclick=()=>{$('devpanel').hidden=!$('devpanel').hidden;devLabels();};
+function devLabels(){const b=document.querySelector('[data-dev=infinite]');b.textContent=`UNLIMITED CASH: ${career.devInfinite?'ON':'OFF'}`;b.classList.toggle('on',!!career.devInfinite);}
+function devRefill(){if(career.devInfinite)career.cash=9999999;}
+document.querySelectorAll('[data-dev]').forEach(b=>b.onclick=()=>{const k=b.dataset.dev,c=career;
+ if(k==='cash10k')c.cash+=10000;else if(k==='cash100k')c.cash+=100000;else if(k==='cash1m')c.cash+=1000000;
+ else if(k==='infinite'){c.devInfinite=!c.devInfinite;if(c.devInfinite)c.cash=Math.max(c.cash,9999999);}
+ else if(k==='rankup'){const n=nextRank(c);if(n){c.jobsDone=Math.max(c.jobsDone,n.jobs);c.earned=Math.max(c.earned,n.earned);}}
+ else if(k==='rankmax'){const top=RANKS[RANKS.length-1];c.jobsDone=Math.max(c.jobsDone,top.jobs);c.earned=Math.max(c.earned,top.earned);}
+ else if(k==='partsmax'){for(const p of PARTS)c.parts[p.id]={unlocked:true,level:MAX_LEVEL};}
+ else if(k==='partsreset'){c.parts=newParts();}
+ else if(k==='worlds'){c.worlds=[...WORLD_ORDER];}
+ else if(k==='newboard'){c.boardSeed=Math.floor(Math.random()*1e9);}
+ else if(k==='reset'){if(!confirmReset())return;career=newCareer();if(HERE.id!=='kestrel'){saveCareer(career);setWorld('kestrel');location.reload();return;}}
+ saveCareer(career);perf=stats(career);state.perf=perf;planeLook();careerHud();renderBoard();setTab(hangarTab);devLabels();audio.unlock();audio.sfx.tick();});
+// Two clicks to reset: the first arms it for 3 seconds (no browser dialogs).
+let resetArmed=0;function confirmReset(){const b=document.querySelector('[data-dev=reset]');if(performance.now()<resetArmed){resetArmed=0;b.textContent='RESET CAREER';return true;}
+ resetArmed=performance.now()+5000;b.textContent='CLICK AGAIN TO RESET EVERYTHING';setTimeout(()=>{if(performance.now()>=resetArmed)b.textContent='RESET CAREER';},5100);return false;}
 
 function frame(now){requestAnimationFrame(frame);const dt=Math.min((now-last)/1000,.04);last=now;let camHandled=false;
  if(mode==='cutscene')camHandled=updateCutscene(dt);

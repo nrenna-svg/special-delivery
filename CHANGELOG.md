@@ -1,5 +1,10 @@
 # Special Delivery changelog
 
+## v0.78 — DEV test tools
+
+- Hangar **DEV** button (bottom-left, purple) with play-testing tools: +$10k / +$100k / +$1M, unlimited cash toggle, rank up, max rank, max all parts, reset parts, unlock all worlds, new job board, reset career (two clicks within 5 s). Hidden outside the hangar.
+- Starting a new career (DEV reset or after a career-ending crash) while in Mesa Rojo now returns you to Kestrel, since the new career hasn't unlocked it.
+
 ## v0.76 — Unlock fees everywhere, a plane that shows its upgrades, workshop sounds
 
 - **Every part needs an unlock first**, starter parts included (Engine $600, Fuel tank $500, Cargo hold $400), so each part is six purchases. The shop shows a padlock pip then five level pips.
